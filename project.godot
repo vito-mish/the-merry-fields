@@ -17,7 +17,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 config/name="The Merry Fields"
 config/description="A cozy farming RPG"
 config/version="0.1.0"
-run/main_scene="res://scenes/world/main.tscn"
+run/main_scene="res://scenes/maps/farm.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://assets/sprites/ui/icon.png"
 
