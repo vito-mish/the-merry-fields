@@ -4,5 +4,13 @@
 
 [node name="Main" type="Node2D"]
 
+[node name="Ground" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(-600, -450, 600, -450, 600, 450, -600, 450)
+color = Color(0.55, 0.76, 0.29, 1.0)
+
+[node name="Marker" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(-5, -5, 5, -5, 5, 5, -5, 5)
+color = Color(1.0, 1.0, 1.0, 0.5)
+
 [node name="Player" parent="." instance=ExtResource("1")]
-position = Vector2(160, 90)
+position = Vector2(0, 0)
