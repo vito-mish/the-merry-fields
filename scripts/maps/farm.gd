@@ -54,47 +54,47 @@ func _generate_farm() -> void:
 	# ── Ground fill ──────────────────────────────────────────────────────
 	for x in range(-s, s):
 		for y in range(-s, s):
-			_set(x, y, T_GRASS)
+			_place(x, y, T_GRASS)
 
 	# ── Border (impassable tree line) ────────────────────────────────────
 	for i in range(-s, s):
-		_set(i, -s, T_BORDER)
-		_set(i,  s - 1, T_BORDER)
-		_set(-s, i, T_BORDER)
-		_set( s - 1, i, T_BORDER)
+		_place(i, -s, T_BORDER)
+		_place(i,  s - 1, T_BORDER)
+		_place(-s, i, T_BORDER)
+		_place( s - 1, i, T_BORDER)
 
 	# ── Inner fence (farm boundary) ───────────────────────────────────────
 	for i in range(-s + 2, s - 2):
-		_set(i, -s + 2, T_FENCE)
-		_set(-s + 2, i, T_FENCE)
-		_set( s - 3, i, T_FENCE)
+		_place(i, -s + 2, T_FENCE)
+		_place(-s + 2, i, T_FENCE)
+		_place( s - 3, i, T_FENCE)
 	# Bottom fence has gate gap (entrance)
 	for i in range(-s + 2, s - 2):
 		if i < -2 or i > 2:
-			_set(i, s - 3, T_FENCE)
+			_place(i, s - 3, T_FENCE)
 
 	# ── Stone path (gate → house) ─────────────────────────────────────────
 	for y in range(-10, s - 2):
-		_set(-1, y, T_PATH)
-		_set( 0, y, T_PATH)
+		_place(-1, y, T_PATH)
+		_place( 0, y, T_PATH)
 
 	# ── Farmable dirt patch (left side) ───────────────────────────────────
 	for x in range(-s + 4, -4):
 		for y in range(-s + 4, 10):
-			_set(x, y, T_DIRT)
+			_place(x, y, T_DIRT)
 
 	# ── Pond (top-right) ──────────────────────────────────────────────────
 	for x in range(10, 18):
 		for y in range(-s + 4, -18):
-			_set(x, y, T_WATER)
+			_place(x, y, T_WATER)
 	# Pond border (grass around)
 	for x in range(9, 19):
-		_set(x, -18, T_PATH)
-		_set(x, -s + 3, T_PATH)
+		_place(x, -18, T_PATH)
+		_place(x, -s + 3, T_PATH)
 	for y in range(-s + 3, -17):
-		_set(9, y, T_PATH)
-		_set(18, y, T_PATH)
+		_place(9, y, T_PATH)
+		_place(18, y, T_PATH)
 
 
-func _set(x: int, y: int, coord: Vector2i) -> void:
+func _place(x: int, y: int, coord: Vector2i) -> void:
 	tile_map.set_cell(LAYER, Vector2i(x, y), SOURCE_ID, coord)
