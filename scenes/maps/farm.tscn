@@ -1,8 +1,10 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/maps/farm.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/characters/player.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="3"]
+[ext_resource type="Script" path="res://scripts/farm/farm_grid.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/world/tile_highlight.gd" id="5"]
 
 [node name="Farm" type="Node2D"]
 script = ExtResource("1")
@@ -14,7 +16,14 @@ collision_enabled = true
 [node name="YSort" type="Node2D" parent="."]
 y_sort_enabled = true
 
+[node name="TileHighlight" type="Node2D" parent="YSort"]
+z_index = 10
+script = ExtResource("5")
+
 [node name="Player" parent="YSort" instance=ExtResource("2")]
 position = Vector2(8, 200)
+
+[node name="FarmGrid" type="Node" parent="."]
+script = ExtResource("4")
 
 [node name="HUD" parent="." instance=ExtResource("3")]

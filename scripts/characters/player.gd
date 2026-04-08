@@ -1,14 +1,33 @@
 extends CharacterBody2D
 
-# Movement
+# ── 移動 ─────────────────────────────────────────────────────────────────
 const SPEED := 80.0
 
-# Stamina
+# ── 體力 ─────────────────────────────────────────────────────────────────
 const STAMINA_MAX := 100.0
-var stamina := STAMINA_MAX
+var stamina       := STAMINA_MAX
 
-# Direction: 0=down, 1=up, 2=left, 3=right
+# ── 工具 ─────────────────────────────────────────────────────────────────
+## 可用工具清單
+const TOOLS        : Array[String] = ["hoe", "watering_can", "seeds"]
+const TOOL_STAMINA : Dictionary    = { "hoe": 4.0, "watering_can": 2.0, "seeds": 1.0 }
+## 目前選擇的工具索引
+var tool_index : int    = 0
+var current_tool: String:
+	get: return TOOLS[tool_index]
+
+## 目前攜帶的種子種類
+var seed_crop_id : String = "turnip"
+
+# ── 方向：0=down 1=up 2=left 3=right ─────────────────────────────────────
 var facing := 0
+
+## 當前面向的 tile（供 TileHighlight 讀取）
+var _facing_tile_pos : Vector2i = Vector2i.ZERO
+
+# ── 互動冷卻（避免按住 action 連續觸發）────────────────────────────────────
+var _action_cooldown : float = 0.0
+const ACTION_CD      : float = 0.3
 
 @onready var anim: AnimatedSprite2D = $AnimatedSprite2D if has_node("AnimatedSprite2D") else null
 
@@ -17,7 +36,7 @@ func _ready() -> void:
 	add_to_group("player")
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	var input := Vector2(
 		Input.get_axis("move_left", "move_right"),
 		Input.get_axis("move_up", "move_down")
@@ -27,7 +46,74 @@ func _physics_process(_delta: float) -> void:
 	move_and_slide()
 	_update_facing(input)
 	_update_animation(input)
+	_facing_tile_pos = _facing_tile()
 
+	# 工具切換（Q / E 或 LB / RB）
+	if Input.is_action_just_pressed("tool_prev"):
+		tool_index = (tool_index - 1 + TOOLS.size()) % TOOLS.size()
+	if Input.is_action_just_pressed("tool_next"):
+		tool_index = (tool_index + 1) % TOOLS.size()
+
+	# 互動
+	_action_cooldown = maxf(0.0, _action_cooldown - delta)
+	if Input.is_action_pressed("action") and _action_cooldown <= 0.0:
+		_action_cooldown = ACTION_CD
+		_use_tool()
+
+
+# ── 工具使用 ──────────────────────────────────────────────────────────────
+
+func _use_tool() -> void:
+	var farm_grid := _get_farm_grid()
+	if farm_grid == null:
+		return
+
+	var tile_pos := _facing_tile()
+	var cost     : float = TOOL_STAMINA.get(current_tool, 0.0)
+
+	match current_tool:
+		"hoe":
+			if farm_grid.get_tile_state(tile_pos) == "dirt":
+				if consume_stamina(cost):
+					farm_grid.till(tile_pos)
+
+		"watering_can":
+			var state : String = farm_grid.get_tile_state(tile_pos)
+			if state == "tilled" or state == "planted":
+				if consume_stamina(cost):
+					farm_grid.water(tile_pos)
+
+		"seeds":
+			var state : String = farm_grid.get_tile_state(tile_pos)
+			if state == "tilled" or state == "watered":
+				if consume_stamina(cost):
+					farm_grid.plant(tile_pos, seed_crop_id)
+
+	# 成熟作物隨時可收成（不限工具）
+	if farm_grid.is_mature(tile_pos):
+		farm_grid.harvest(tile_pos)
+
+
+## 回傳玩家面向的 tile 座標
+func _facing_tile() -> Vector2i:
+	var offsets : Array[Vector2i] = [
+		Vector2i( 0,  1),  # down
+		Vector2i( 0, -1),  # up
+		Vector2i(-1,  0),  # left
+		Vector2i( 1,  0),  # right
+	]
+	var foot := Vector2i(
+		int(floor(position.x / 16.0)),
+		int(floor(position.y / 16.0))
+	)
+	return foot + offsets[facing]
+
+
+func _get_farm_grid() -> Node:
+	return get_tree().get_first_node_in_group("farm_grid")
+
+
+# ── 動畫 ─────────────────────────────────────────────────────────────────
 
 func _update_facing(input: Vector2) -> void:
 	if input.x > 0:
@@ -43,11 +129,13 @@ func _update_facing(input: Vector2) -> void:
 func _update_animation(input: Vector2) -> void:
 	if anim == null:
 		return
-	var dir: String = ["down", "up", "left", "right"][facing]
-	var state := "walk_" + dir if input != Vector2.ZERO else "idle_" + dir
+	var dir   : String = ["down", "up", "left", "right"][facing]
+	var state : String = "walk_" + dir if input != Vector2.ZERO else "idle_" + dir
 	if anim.animation != state:
 		anim.play(state)
 
+
+# ── 體力 ─────────────────────────────────────────────────────────────────
 
 func consume_stamina(amount: float) -> bool:
 	if stamina < amount:
@@ -57,4 +145,4 @@ func consume_stamina(amount: float) -> bool:
 
 
 func restore_stamina(amount: float) -> void:
-	stamina = min(stamina + amount, STAMINA_MAX)
+	stamina = minf(stamina + amount, STAMINA_MAX)

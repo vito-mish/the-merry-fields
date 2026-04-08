@@ -1,0 +1,47 @@
+{
+  "turnip": {
+    "name": "蕪菁",
+    "name_en": "Turnip",
+    "season": ["spring"],
+    "grow_days": 5,
+    "multi_harvest": false,
+    "sell_price": 60,
+    "stamina_cost": 2,
+    "color_seedling": [0.35, 0.65, 0.25],
+    "color_mature":   [0.85, 0.75, 0.20]
+  },
+  "potato": {
+    "name": "馬鈴薯",
+    "name_en": "Potato",
+    "season": ["spring"],
+    "grow_days": 7,
+    "multi_harvest": false,
+    "sell_price": 80,
+    "stamina_cost": 2,
+    "color_seedling": [0.35, 0.65, 0.25],
+    "color_mature":   [0.72, 0.58, 0.25]
+  },
+  "tomato": {
+    "name": "番茄",
+    "name_en": "Tomato",
+    "season": ["summer"],
+    "grow_days": 10,
+    "multi_harvest": true,
+    "regrow_days": 4,
+    "sell_price": 100,
+    "stamina_cost": 2,
+    "color_seedling": [0.35, 0.65, 0.25],
+    "color_mature":   [0.90, 0.25, 0.15]
+  },
+  "pumpkin": {
+    "name": "南瓜",
+    "name_en": "Pumpkin",
+    "season": ["autumn"],
+    "grow_days": 12,
+    "multi_harvest": false,
+    "sell_price": 120,
+    "stamina_cost": 3,
+    "color_seedling": [0.35, 0.65, 0.25],
+    "color_mature":   [0.92, 0.55, 0.12]
+  }
+}
