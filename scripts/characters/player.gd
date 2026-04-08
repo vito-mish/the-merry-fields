@@ -10,7 +10,7 @@ var stamina := STAMINA_MAX
 # Direction: 0=down, 1=up, 2=left, 3=right
 var facing := 0
 
-@onready var anim: AnimatedSprite2D = $AnimatedSprite2D
+@onready var anim: AnimatedSprite2D = $AnimatedSprite2D if has_node("AnimatedSprite2D") else null
 
 
 func _physics_process(_delta: float) -> void:
@@ -37,6 +37,8 @@ func _update_facing(input: Vector2) -> void:
 
 
 func _update_animation(input: Vector2) -> void:
+	if anim == null:
+		return
 	var dir := ["down", "up", "left", "right"][facing]
 	var state := "walk_" + dir if input != Vector2.ZERO else "idle_" + dir
 	if anim.animation != state:
