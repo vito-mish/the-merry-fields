@@ -90,6 +90,22 @@ See `docs/project-spec.md` for the full 14-story task list and `docs/game-design
 
 Completed: S01 (player movement), S03 (world map + transitions + minimap).
 
+## Development Workflow (IMPORTANT)
+
+Follow this loop every time you implement a feature:
+
+1. **Develop** — write code, fix bugs
+2. **Verify syntax** — run `bash check.sh` after every logical unit; fix errors immediately before continuing
+3. **Report to user** — when a feature is ready, STOP and provide:
+   - **功能描述**: what was built and how it works
+   - **測試案例表**: a table of test cases with steps and expected results
+   - End with: "✋ 請測試以上案例，確認後告訴我"
+   - Then **wait for the user's response**
+4. **Fix bugs** — if the user reports issues, fix them and ask them to re-test
+5. **Commit only when asked** — NEVER run `git commit` or `git push` unless the user explicitly says "commit" or "commit+push"
+
+Do NOT assume tests pass. Do NOT auto-commit after finishing code.
+
 ## Known Issues / Gotchas
 
 - **Minimap is hardcoded to 60×60 tiles** — displays incorrectly in the village (80×50). Needs dynamic map size.
