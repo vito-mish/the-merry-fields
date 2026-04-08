@@ -13,6 +13,10 @@ var facing := 0
 @onready var anim: AnimatedSprite2D = $AnimatedSprite2D if has_node("AnimatedSprite2D") else null
 
 
+func _ready() -> void:
+	add_to_group("player")
+
+
 func _physics_process(_delta: float) -> void:
 	var input := Vector2(
 		Input.get_axis("move_left", "move_right"),

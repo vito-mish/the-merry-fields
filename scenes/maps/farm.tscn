@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/maps/farm.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/characters/player.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="3"]
 
 [node name="Farm" type="Node2D"]
 script = ExtResource("1")
@@ -12,3 +13,5 @@ collision_enabled = true
 
 [node name="Player" parent="." instance=ExtResource("2")]
 position = Vector2(8, 200)
+
+[node name="HUD" parent="." instance=ExtResource("3")]

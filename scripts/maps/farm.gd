@@ -18,6 +18,7 @@ const FARM_SIZE := 30  # -30 to +29 tiles
 
 
 func _ready() -> void:
+	tile_map.add_to_group("tile_map")
 	_setup_tileset()
 	_generate_farm()
 
