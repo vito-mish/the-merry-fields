@@ -26,7 +26,11 @@ func _ready() -> void:
 func _setup_tileset() -> void:
 	var ts := TileSet.new()
 	ts.tile_size = Vector2i(16, 16)
+
+	# Physics layer: must set collision_layer so CharacterBody2D (mask=1) hits it
 	ts.add_physics_layer()
+	ts.set_physics_layer_collision_layer(0, 1)
+	ts.set_physics_layer_collision_mask(0, 1)
 
 	var source := TileSetAtlasSource.new()
 	source.texture = preload("res://assets/tilesets/farm_tiles.png")
@@ -36,14 +40,15 @@ func _setup_tileset() -> void:
 	for coord in [T_GRASS, T_DIRT, T_TILLED, T_WATERED, T_PATH, T_FENCE]:
 		source.create_tile(coord)
 
-	# Blocking tiles (water, border)
+	# Blocking tiles (water, border) — full 16×16 solid box
+	var box := PackedVector2Array([
+		Vector2(-8, -8), Vector2(8, -8), Vector2(8, 8), Vector2(-8, 8)
+	])
 	for coord in [T_WATER, T_BORDER]:
 		source.create_tile(coord)
 		var td := source.get_tile_data(coord, 0)
 		td.add_collision_polygon(0)
-		td.set_collision_polygon_points(0, 0, PackedVector2Array([
-			Vector2(-8, -8), Vector2(8, -8), Vector2(8, 8), Vector2(-8, 8)
-		]))
+		td.set_collision_polygon_points(0, 0, box)
 
 	ts.add_source(source, SOURCE_ID)
 	tile_map.tile_set = ts
