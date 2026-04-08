@@ -2,7 +2,7 @@ extends Control
 
 const MAP_HALF := 30        # farm goes -30 to +29
 const MAP_SIZE := MAP_HALF * 2  # 60 tiles
-const DISPLAY  := 90        # minimap display size in pixels
+const DISPLAY  := 48        # minimap display size in pixels
 
 const PALETTE := {
 	Vector2i(0, 0): Color(0.32, 0.58, 0.24),  # grass
