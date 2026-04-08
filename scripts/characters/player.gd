@@ -39,7 +39,7 @@ func _update_facing(input: Vector2) -> void:
 func _update_animation(input: Vector2) -> void:
 	if anim == null:
 		return
-	var dir := ["down", "up", "left", "right"][facing]
+	var dir: String = ["down", "up", "left", "right"][facing]
 	var state := "walk_" + dir if input != Vector2.ZERO else "idle_" + dir
 	if anim.animation != state:
 		anim.play(state)
