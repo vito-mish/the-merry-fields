@@ -21,37 +21,47 @@ func _ready() -> void:
 	tile_map.add_to_group("tile_map")
 	_setup_tileset()
 	_generate_farm()
+	_add_colliders()
 
 
 func _setup_tileset() -> void:
 	var ts := TileSet.new()
 	ts.tile_size = Vector2i(16, 16)
 
-	# Physics layer: must set collision_layer so CharacterBody2D (mask=1) hits it
-	ts.add_physics_layer()
-	ts.set_physics_layer_collision_layer(0, 1)
-	ts.set_physics_layer_collision_mask(0, 1)
-
 	var source := TileSetAtlasSource.new()
 	source.texture = preload("res://assets/tilesets/farm_tiles.png")
 	source.texture_region_size = Vector2i(16, 16)
 
-	# Walkable tiles (no collision)
-	for coord in [T_GRASS, T_DIRT, T_TILLED, T_WATERED, T_PATH, T_FENCE]:
+	for coord in [T_GRASS, T_DIRT, T_TILLED, T_WATERED, T_PATH, T_FENCE, T_WATER, T_BORDER]:
 		source.create_tile(coord)
-
-	# Blocking tiles (water, border) — full 16×16 solid box
-	var box := PackedVector2Array([
-		Vector2(-8, -8), Vector2(8, -8), Vector2(8, 8), Vector2(-8, 8)
-	])
-	for coord in [T_WATER, T_BORDER]:
-		source.create_tile(coord)
-		var td := source.get_tile_data(coord, 0)
-		td.add_collision_polygon(0)
-		td.set_collision_polygon_points(0, 0, box)
 
 	ts.add_source(source, SOURCE_ID)
 	tile_map.tile_set = ts
+
+
+# StaticBody2D approach — reliable collision regardless of TileMap physics quirks
+func _add_colliders() -> void:
+	var s := FARM_SIZE * 16  # 480px
+
+	# Outer border (4 walls)
+	_make_wall(Vector2(    0, -s + 8), Vector2(s * 2,      16))  # top
+	_make_wall(Vector2(    0,  s - 8), Vector2(s * 2,      16))  # bottom
+	_make_wall(Vector2(-s + 8,     0), Vector2(16,     s * 2))   # left
+	_make_wall(Vector2( s - 8,     0), Vector2(16,     s * 2))   # right
+
+	# Water pond: tiles x[10..17], y[-26..-19] → pixels (160,-416)→(288,-288)
+	_make_wall(Vector2(224, -352), Vector2(128, 128))
+
+
+func _make_wall(center: Vector2, size: Vector2) -> void:
+	var body := StaticBody2D.new()
+	var col  := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = size
+	col.shape  = rect
+	body.position = center
+	body.add_child(col)
+	add_child(body)
 
 
 func _generate_farm() -> void:
