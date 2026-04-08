@@ -23,9 +23,6 @@ func _physics_process(_delta: float) -> void:
 		Input.get_axis("move_up", "move_down")
 	).normalized()
 
-	if input != Vector2.ZERO:
-		print("moving: ", input)
-
 	velocity = input * SPEED
 	move_and_slide()
 	_update_facing(input)

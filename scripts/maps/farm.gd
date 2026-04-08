@@ -1,3 +1,5 @@
+## Farm — 農場場景生成 (S03-T01)
+## 含場景出口→村莊、SpawnPoint、Y-sort 樹木
 extends Node2D
 
 # Tile atlas coordinates
@@ -22,6 +24,9 @@ func _ready() -> void:
 	_setup_tileset()
 	_generate_farm()
 	_add_colliders()
+	_add_scene_exits()
+	_add_spawn_points()
+	_add_trees()
 
 
 func _setup_tileset() -> void:
@@ -44,10 +49,17 @@ func _add_colliders() -> void:
 	var s := FARM_SIZE * 16  # 480px
 
 	# Outer border (4 walls)
-	_make_wall(Vector2(    0, -s + 8), Vector2(s * 2,      16))  # top
-	_make_wall(Vector2(    0,  s - 8), Vector2(s * 2,      16))  # bottom
-	_make_wall(Vector2(-s + 8,     0), Vector2(16,     s * 2))   # left
-	_make_wall(Vector2( s - 8,     0), Vector2(16,     s * 2))   # right
+	# 大門缺口在 tile x=[-2..2] → pixel x=-32 ~ x=48（5 tiles × 16px，中心 x=8）
+	# 底部牆分左右兩段，中間留 80px 通道
+	const GATE_LEFT  := -32   # 缺口左邊（pixel）
+	const GATE_RIGHT :=  48   # 缺口右邊（pixel）
+	var left_w  : int = GATE_LEFT  + s          # 480-32  = 448
+	var right_w : int = s - GATE_RIGHT          # 480-48  = 432
+	_make_wall(Vector2(-s + left_w  / 2, s - 8), Vector2(left_w,  16))  # bottom-left
+	_make_wall(Vector2( s - right_w / 2, s - 8), Vector2(right_w, 16))  # bottom-right
+	_make_wall(Vector2(    0, -s + 8),            Vector2(s * 2,   16))  # top
+	_make_wall(Vector2(-s + 8,     0),            Vector2(16,   s * 2))  # left
+	_make_wall(Vector2( s - 8,     0),            Vector2(16,   s * 2))  # right
 
 	# Water pond: tiles x[10..17], y[-26..-19] → pixels (160,-416)→(288,-288)
 	_make_wall(Vector2(224, -352), Vector2(128, 128))
@@ -111,6 +123,88 @@ func _generate_farm() -> void:
 		_place(9, y, T_PATH)
 		_place(18, y, T_PATH)
 
+
+# ── 場景出口 ──────────────────────────────────────────────────────────────
+
+func _add_scene_exits() -> void:
+	# 農場底部大門 → 村莊
+	# 大門缺口在 tile x=[-2..2], y=27；觸發框放在邊界外側
+	_make_exit(
+		Vector2(8, FARM_SIZE * 16 - 8),   # 地圖底邊
+		Vector2(80, 16),
+		"res://scenes/maps/village.tscn",
+		"from_farm"
+	)
+
+
+func _make_exit(pos: Vector2, size: Vector2,
+				target: String, spawn_id: String) -> void:
+	var exit  := Area2D.new()
+	var col   := CollisionShape2D.new()
+	var shape := RectangleShape2D.new()
+	shape.size    = size
+	col.shape     = shape
+	exit.position = pos
+	exit.collision_layer = 0
+	exit.collision_mask  = 1
+	exit.add_child(col)
+	exit.body_entered.connect(func(body: Node) -> void:
+		if body.is_in_group("player") and not TransitionManager.is_transitioning():
+			TransitionManager.change_scene(target, spawn_id)
+	)
+	add_child(exit)
+
+
+# ── 出生點 ────────────────────────────────────────────────────────────────
+
+func _add_spawn_points() -> void:
+	# 預設出生點：農場中心小屋前
+	_make_spawn("default",      Vector2(8,  -160))
+	# 從村莊回來：剛進大門的位置
+	_make_spawn("from_village", Vector2(8,   400))
+
+
+func _make_spawn(id: String, pos: Vector2) -> void:
+	var sp := Marker2D.new()
+	sp.set_script(preload("res://scripts/world/spawn_point.gd"))
+	sp.position = pos
+	add_child(sp)
+	sp.spawn_id = id
+
+
+# ── 裝飾樹木（Y-sort）────────────────────────────────────────────────────
+
+func _add_trees() -> void:
+	var TreeScene := preload("res://scenes/world/tree_object.tscn")
+	var s         := FARM_SIZE
+
+	# 樹木位置（tile 座標），避開農地、水池、路徑
+	var tree_tiles : Array[Vector2i] = [
+		# 右側樹帶（x=20..28，避開水池 y=-26..-19）
+		Vector2i(22, -15), Vector2i(24, -13), Vector2i(26, -15),
+		Vector2i(22,  -8), Vector2i(25,  -5), Vector2i(28,  -2),
+		Vector2i(22,   3), Vector2i(25,   6), Vector2i(28,   9),
+		Vector2i(22,  14), Vector2i(25,  18), Vector2i(27,  22),
+		# 左側（農地外圍）
+		Vector2i(-27, -25), Vector2i(-24, -25), Vector2i(-21, -25),
+		# 右上角（水池右方）
+		Vector2i(20, -25), Vector2i(23, -25), Vector2i(26, -25),
+		# 頂部（邊界內）
+		Vector2i(-15, -27), Vector2i(-8, -27), Vector2i(5, -27),
+		Vector2i(12, -27), Vector2i(18, -27),
+	]
+
+	var ysort := $YSort
+	for i in range(tree_tiles.size()):
+		var t    := tree_tiles[i]
+		var tree : Node2D = TreeScene.instantiate()
+		tree.position     = Vector2(t.x * 16, t.y * 16)
+		tree.seed_val     = i * 97 + 13
+		tree.scale_factor = 0.85 + (i % 4) * 0.1
+		ysort.add_child(tree)
+
+
+# ── 工具 ─────────────────────────────────────────────────────────────────
 
 func _place(x: int, y: int, coord: Vector2i) -> void:
 	tile_map.set_cell(LAYER, Vector2i(x, y), SOURCE_ID, coord)
