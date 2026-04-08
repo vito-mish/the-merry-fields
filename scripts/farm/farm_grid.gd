@@ -23,7 +23,7 @@ var _crop_db   : Dictionary = {}
 #                          "crop_id": String, "day_planted": int,
 #                          "days_watered": int, "watered_today": bool,
 #                          "growth_stage": int }
-var _tiles     : Dictionary = {}
+var _tiles     : Dictionary = {}   # 公開供 debug 讀取
 
 # 作物視覺節點
 # key: Vector2i, value: Node2D
@@ -83,11 +83,14 @@ func plant(tile_pos: Vector2i, crop_id: String) -> bool:
 	var t : Dictionary = _tiles[tile_pos]
 	if t["state"] != "tilled" and t["state"] != "watered":
 		return false
+	var was_watered    : bool = t.get("watered_today", false)
 	t["state"]         = "planted"
 	t["crop_id"]       = crop_id
 	t["day_planted"]   = TimeManager.day
-	t["days_watered"]  = 1 if t.get("watered_today", false) else 0
+	t["days_watered"]  = 0
 	t["growth_stage"]  = 0
+	t["dry_days"]      = 0
+	t["watered_today"] = was_watered   # 保留澆水狀態，讓隔天推進正確計算
 	_spawn_crop_visual(tile_pos, crop_id, 0)
 	return true
 
@@ -105,6 +108,11 @@ func harvest(tile_pos: Vector2i) -> bool:
 
 	var quality := _calc_quality(t)
 	harvested.emit(t["crop_id"], quality)
+
+	# 自動放入出貨箱
+	var box : Node = get_tree().get_first_node_in_group("shipping_box")
+	if box:
+		box.add_item(t["crop_id"], quality)
 
 	# 多次收成作物（番茄等）重置生長
 	if data.get("multi_harvest", false):
@@ -150,18 +158,27 @@ func _on_day_changed(_day: int, _season: int, _year: int) -> void:
 	for pos : Vector2i in _tiles.keys():
 		var t : Dictionary = _tiles[pos]
 		if t["state"] != "planted":
-			# 非種植格：重設澆水標記，隔天乾掉
-			if t.get("watered_today", false):
-				t["watered_today"] = false
-			elif t["state"] == "watered":
+			# 非種植格：隔天一律乾掉（恢復翻土外觀）
+			if t["state"] == "watered":
 				t["state"] = "tilled"
 				_tile_map.set_cell(LAYER, pos, SOURCE_ID, T_TILLED)
+			t["watered_today"] = false
 			continue
 
 		# 種植格：計算生長
+		var data : Dictionary = _crop_db[t["crop_id"]]
+
+		# 已成熟：不需澆水、不會枯死，等待收成
+		if t["growth_stage"] >= _total_stages(data):
+			t["watered_today"] = false
+			_tile_map.set_cell(LAYER, pos, SOURCE_ID, T_TILLED)
+			continue
+
 		if t.get("watered_today", false):
 			t["days_watered"] = t.get("days_watered", 0) + 1
+			t["dry_days"]     = 0
 			t["watered_today"] = false
+			_tile_map.set_cell(LAYER, pos, SOURCE_ID, T_TILLED)   # 隔天恢復乾土外觀
 		else:
 			# 連續 3 天未澆水 → 枯死 (S04-T09)
 			t["dry_days"] = t.get("dry_days", 0) + 1
@@ -170,15 +187,10 @@ func _on_day_changed(_day: int, _season: int, _year: int) -> void:
 				continue
 
 		# 更新生長階段
-		var data    : Dictionary = _crop_db[t["crop_id"]]
-		var stage   : int = _calc_stage(t, data)
+		var stage : int = _calc_stage(t, data)
 		if stage != t["growth_stage"]:
 			t["growth_stage"] = stage
 			_update_crop_visual(pos)
-
-		# 重置 dry_days 若今天有澆水
-		if t.get("watered_today", false) == false and t.get("dry_days", 0) > 0:
-			pass  # 已在上面處理
 
 	# 枯死的作物
 	for pos in to_kill:

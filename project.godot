@@ -21,6 +21,13 @@ run/main_scene="res://scenes/maps/farm.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://assets/sprites/ui/icon.png"
 
+[autoload]
+
+TransitionManager="*res://scripts/managers/transition_manager.gd"
+TimeManager="*res://scripts/managers/time_manager.gd"
+EconomyManager="*res://scripts/managers/economy_manager.gd"
+DebugPanel="*res://scripts/debug/debug_panel.gd"
+
 [display]
 
 window/size/viewport_width=320
@@ -89,12 +96,6 @@ tool_next={
 , Object(InputEventJoypadButton,"resource_local_to_scene":false,"resource_name":"","device":0,"button_index":10,"pressure":0.0,"pressed":false,"script":null)
 ]
 }
-
-[autoload]
-
-TransitionManager="*res://scripts/managers/transition_manager.gd"
-TimeManager="*res://scripts/managers/time_manager.gd"
-DebugPanel="*res://scripts/debug/debug_panel.gd"
 
 [rendering]
 

@@ -28,3 +28,6 @@ func _unhandled_key_input(event: InputEvent) -> void:
 					var state    : String   = farm_grid.get_tile_state(tile_pos)
 					var mature   : bool     = farm_grid.is_mature(tile_pos)
 					print("[DEBUG] tile %s → state: %s, mature: %s" % [tile_pos, state, mature])
+					# 印出完整 tile 資料
+					if farm_grid._tiles.has(tile_pos):
+						print("[DEBUG] tile data: ", farm_grid._tiles[tile_pos])

@@ -27,6 +27,7 @@ func _ready() -> void:
 	_add_scene_exits()
 	_add_spawn_points()
 	_add_trees()
+	_add_shipping_box()
 
 
 func _setup_tileset() -> void:
@@ -202,6 +203,40 @@ func _add_trees() -> void:
 		tree.seed_val     = i * 97 + 13
 		tree.scale_factor = 0.85 + (i % 4) * 0.1
 		ysort.add_child(tree)
+
+
+# ── 出貨箱 ───────────────────────────────────────────────────────────────
+
+func _add_shipping_box() -> void:
+	var box   := Area2D.new()
+	var col   := CollisionShape2D.new()
+	var shape := RectangleShape2D.new()
+	shape.size    = Vector2(16, 16)
+	col.shape     = shape
+	# 出貨箱位於路口右側（tile 3, 20），靠近大門但不擋路
+	box.position  = Vector2(3 * 16 + 8, 20 * 16 + 8)
+	box.add_child(col)
+	box.set_script(preload("res://scripts/farm/shipping_box.gd"))
+	add_child(box)
+
+	# 出貨箱視覺（棕色小箱子）
+	var visual := Node2D.new()
+	visual.position = box.position
+	var poly   := Polygon2D.new()
+	poly.color   = Color(0.55, 0.35, 0.15, 1.0)
+	poly.polygon = PackedVector2Array([
+		Vector2(-6, -6), Vector2(6, -6),
+		Vector2(6, 4),   Vector2(-6, 4)
+	])
+	var lid    := Polygon2D.new()
+	lid.color   = Color(0.45, 0.28, 0.10, 1.0)
+	lid.polygon = PackedVector2Array([
+		Vector2(-7, -8), Vector2(7, -8),
+		Vector2(7, -6),  Vector2(-7, -6)
+	])
+	visual.add_child(poly)
+	visual.add_child(lid)
+	$YSort.add_child(visual)
 
 
 # ── 工具 ─────────────────────────────────────────────────────────────────

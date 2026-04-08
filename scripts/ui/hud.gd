@@ -17,6 +17,7 @@ const SLOT_GAP    : int = 2
 
 @onready var _time_label  : Label       = $TimePanel/VBox/TimeLabel
 @onready var _date_label  : Label       = $TimePanel/VBox/DateLabel
+@onready var _gold_label  : Label       = $GoldLabel
 @onready var _stamina_bar : ProgressBar = $StaminaBar
 @onready var _toolbar     : Control     = $Toolbar
 
@@ -24,8 +25,10 @@ const SLOT_GAP    : int = 2
 func _ready() -> void:
 	TimeManager.time_changed.connect(_on_time_changed)
 	TimeManager.day_changed.connect(_on_day_changed)
+	EconomyManager.gold_changed.connect(_on_gold_changed)
 	_on_time_changed(TimeManager.hour, TimeManager.minute)
 	_on_day_changed(TimeManager.day, TimeManager.season, TimeManager.year)
+	_on_gold_changed(EconomyManager.gold)
 
 
 func _process(_delta: float) -> void:
@@ -41,6 +44,10 @@ func _on_time_changed(h: int, m: int) -> void:
 
 func _on_day_changed(d: int, s: int, _y: int) -> void:
 	_date_label.text = "%s 第%d天" % [TimeManager.SEASONS[s], d]
+
+
+func _on_gold_changed(amount: int) -> void:
+	_gold_label.text = "G %d" % amount
 
 
 # ── 體力條 ────────────────────────────────────────────────────────────────
