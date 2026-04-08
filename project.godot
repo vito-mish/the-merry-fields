@@ -81,6 +81,7 @@ menu={
 [autoload]
 
 TransitionManager="*res://scripts/managers/transition_manager.gd"
+TimeManager="*res://scripts/managers/time_manager.gd"
 
 [rendering]
 

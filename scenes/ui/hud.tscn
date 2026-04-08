@@ -1,9 +1,65 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/minimap.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/ui/hud.gd" id="2"]
+
+[sub_resource type="StyleBoxFlat" id="1"]
+bg_color = Color(0.12, 0.12, 0.12, 0.6)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="2"]
+bg_color = Color(0.25, 0.78, 0.35, 1.0)
+
+[sub_resource type="StyleBoxFlat" id="3"]
+bg_color = Color(0.15, 0.15, 0.15, 0.7)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
 
 [node name="HUD" type="CanvasLayer"]
 layer = 10
+script = ExtResource("2")
+
+[node name="TimePanel" type="PanelContainer" parent="."]
+anchors_preset = 0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 58.0
+offset_bottom = 22.0
+theme_override_styles/panel = SubResource("1")
+
+[node name="VBox" type="VBoxContainer" parent="TimePanel"]
+layout_mode = 2
+
+[node name="TimeLabel" type="Label" parent="TimePanel/VBox"]
+layout_mode = 2
+text = "06:00"
+theme_override_font_sizes/font_size = 8
+
+[node name="DateLabel" type="Label" parent="TimePanel/VBox"]
+layout_mode = 2
+text = "春 第1天"
+theme_override_font_sizes/font_size = 7
+
+[node name="StaminaBar" type="ProgressBar" parent="."]
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = -12.0
+offset_right = 68.0
+offset_bottom = -4.0
+min_value = 0.0
+max_value = 100.0
+value = 100.0
+show_percentage = false
+theme_override_styles/fill = SubResource("2")
+theme_override_styles/background = SubResource("3")
 
 [node name="MinimapPanel" type="PanelContainer" parent="."]
 anchors_preset = 3
