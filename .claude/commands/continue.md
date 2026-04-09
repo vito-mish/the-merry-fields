@@ -1,3 +1,8 @@
+---
+name: continue
+description: 依據 docs/project-spec.md 的進度，自動選出下一個未完成的優先任務並開始實作
+---
+
 讀取 `docs/project-spec.md`，找出所有 `⬜ 未開始` 或 `🟡 進行中` 的任務。
 
 依照以下優先順序選出下一個要做的 Task（選該 Story 中第一個 `⬜ 未開始` 的項目）：
