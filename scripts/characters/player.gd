@@ -1,16 +1,11 @@
 extends CharacterBody2D
 
-# ── 移動 ─────────────────────────────────────────────────────────────────
-const SPEED := 80.0
-
 # ── 體力 ─────────────────────────────────────────────────────────────────
-const STAMINA_MAX := 100.0
-var stamina       := STAMINA_MAX
+var stamina : float = GameConfig.STAMINA_MAX
 
 # ── 工具 ─────────────────────────────────────────────────────────────────
 ## 可用工具清單
-const TOOLS        : Array[String] = ["hoe", "watering_can", "seeds"]
-const TOOL_STAMINA : Dictionary    = { "hoe": 4.0, "watering_can": 2.0, "seeds": 1.0 }
+const TOOLS : Array[String] = ["hoe", "watering_can", "seeds"]
 ## 目前選擇的工具索引
 var tool_index : int    = 0
 var current_tool: String:
@@ -34,6 +29,8 @@ const ACTION_CD      : float = 0.3
 
 func _ready() -> void:
 	add_to_group("player")
+	TimeManager.late_night.connect(_on_late_night)
+	TimeManager.forced_sleep.connect(_on_forced_sleep)
 
 
 func _physics_process(delta: float) -> void:
@@ -42,7 +39,7 @@ func _physics_process(delta: float) -> void:
 		Input.get_axis("move_up", "move_down")
 	).normalized()
 
-	velocity = input * SPEED
+	velocity = input * GameConfig.PLAYER_SPEED
 	move_and_slide()
 	_update_facing(input)
 	_update_animation(input)
@@ -69,7 +66,7 @@ func _use_tool() -> void:
 		return
 
 	var tile_pos := _facing_tile()
-	var cost     : float = TOOL_STAMINA.get(current_tool, 0.0)
+	var cost     : float = GameConfig.TOOL_STAMINA.get(current_tool, 0.0)
 
 	match current_tool:
 		"hoe":
@@ -145,4 +142,42 @@ func consume_stamina(amount: float) -> bool:
 
 
 func restore_stamina(amount: float) -> void:
-	stamina = minf(stamina + amount, STAMINA_MAX)
+	stamina = minf(stamina + amount, GameConfig.STAMINA_MAX)
+
+
+# ── 睡眠 ─────────────────────────────────────────────────────────────────
+
+func _on_late_night(_hour: int) -> void:
+	pass  # 只顯示 HUD 警告，不影響體力
+
+
+func _on_forced_sleep() -> void:
+	var fee := mini(GameConfig.DOCTOR_FEE, EconomyManager.get_gold())
+	EconomyManager.spend_gold(fee)
+	_do_sleep(true)
+
+
+## 主動睡覺（進房屋觸發）
+func sleep() -> void:
+	_do_sleep(false)
+
+
+func _do_sleep(fainted: bool) -> void:
+	var penalty := GameConfig.FAINT_STAMINA_PENALTY if fainted else _calc_sleep_penalty()
+	var wake_stamina := GameConfig.STAMINA_MAX * (1.0 - penalty)
+	TransitionManager.sleep_transition(func() -> void:
+		stamina = wake_stamina
+		TimeManager.advance_to_next_day()
+	)
+
+
+## 依目前時間查表，取得主動睡覺的體力懲罰
+func _calc_sleep_penalty() -> float:
+	var h := TimeManager.hour
+	# 懲罰只在 01:00~03:59 之間有效，其他時間睡覺不扣體力
+	if h < 1 or h >= 4:
+		return 0.0
+	for check_hour in [3, 2, 1]:
+		if h >= check_hour:
+			return GameConfig.SLEEP_PENALTY_BY_HOUR[check_hour]
+	return 0.0

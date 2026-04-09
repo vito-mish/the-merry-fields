@@ -40,6 +40,12 @@ const _ZH_TW : Dictionary = {
 	"MENU_BACK":          "← 返回",
 	"SETTINGS_LANGUAGE":  "語言",
 	"SETTINGS_TITLE":     "設定",
+	# 睡眠系統
+	"SLEEP_HINT":     "[ Z ] 睡覺",
+	"NOTIFY_01":      "01:00 了，晚點睡體力會打折",
+	"NOTIFY_02":      "02:00！明天起床體力 -15%",
+	"NOTIFY_03":      "03:00！明天起床體力 -30%",
+	"NOTIFY_FAINTED": "昨晚暈倒⋯ 扣除醫療費 500G，體力 -50%",
 }
 
 const _EN : Dictionary = {
@@ -69,6 +75,12 @@ const _EN : Dictionary = {
 	"MENU_BACK":          "< Back",
 	"SETTINGS_LANGUAGE":  "Language",
 	"SETTINGS_TITLE":     "Settings",
+	# Sleep system
+	"SLEEP_HINT":     "[ Z ] Sleep",
+	"NOTIFY_01":      "01:00 — sleeping late reduces tomorrow's stamina",
+	"NOTIFY_02":      "02:00! Wake up stamina -15% tomorrow",
+	"NOTIFY_03":      "03:00! Wake up stamina -30% tomorrow",
+	"NOTIFY_FAINTED": "You fainted... Doctor fee -500G, stamina -50%",
 }
 
 

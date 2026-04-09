@@ -23,6 +23,7 @@ config/icon="res://assets/sprites/ui/icon.png"
 
 [autoload]
 
+GameConfig="*res://scripts/config/game_config.gd"
 TransitionManager="*res://scripts/managers/transition_manager.gd"
 TimeManager="*res://scripts/managers/time_manager.gd"
 EconomyManager="*res://scripts/managers/economy_manager.gd"

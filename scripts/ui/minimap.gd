@@ -55,8 +55,15 @@ func _draw() -> void:
 	if _map_texture:
 		draw_texture_rect(_map_texture, Rect2(0, 0, DISPLAY, DISPLAY), false)
 
-	# Player dot (white with black outline)
 	var scale := float(DISPLAY) / MAP_SIZE
+
+	# 農場小屋（像素 (8,-196) → tile (0.5,-12.25)）
+	var house_tile := Vector2(0.5 + MAP_HALF, -12.25 + MAP_HALF)
+	var house_pos  := house_tile * scale
+	draw_rect(Rect2(house_pos - Vector2(1.5, 1.0), Vector2(3.0, 2.0)),
+			Color(0.60, 0.42, 0.24, 1.0))
+
+	# Player dot (white with black outline)
 	var dot := _player_dot * scale
 	draw_circle(dot, 2.5, Color.BLACK)
 	draw_circle(dot, 1.5, Color.WHITE)

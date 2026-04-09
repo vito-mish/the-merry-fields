@@ -43,6 +43,19 @@ func is_transitioning() -> bool:
 	return _is_busy
 
 
+## 睡眠淡出淡入：淡黑後執行 on_black，再淡入
+func sleep_transition(on_black: Callable) -> void:
+	if _is_busy:
+		return
+	_is_busy = true
+	await _fade_to(1.0)
+	on_black.call()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await _fade_to(0.0)
+	_is_busy = false
+
+
 # ── 私有 ─────────────────────────────────────────────────────────────────
 
 func _fade_to(alpha: float) -> void:

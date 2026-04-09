@@ -28,6 +28,7 @@ func _ready() -> void:
 	_add_spawn_points()
 	_add_trees()
 	_add_shipping_box()
+	_add_house()
 
 
 func _setup_tileset() -> void:
@@ -237,6 +238,75 @@ func _add_shipping_box() -> void:
 	visual.add_child(poly)
 	visual.add_child(lid)
 	$YSort.add_child(visual)
+
+
+# ── 農場小屋 ──────────────────────────────────────────────────────────────
+
+func _add_house() -> void:
+	# ── 視覺（Y-sort 下，讓玩家可走到房屋前方） ──────────────────────────
+	var house := Node2D.new()
+	house.position = Vector2(8, -196)
+
+	# 牆體（木色）
+	var wall := Polygon2D.new()
+	wall.color = Color(0.60, 0.42, 0.24, 1.0)
+	wall.polygon = PackedVector2Array([
+		Vector2(-24, -16), Vector2(24, -16),
+		Vector2(24,   16), Vector2(-24, 16),
+	])
+	house.add_child(wall)
+
+	# 屋頂（磚紅三角）
+	var roof := Polygon2D.new()
+	roof.color = Color(0.72, 0.28, 0.18, 1.0)
+	roof.polygon = PackedVector2Array([
+		Vector2(-28, -16), Vector2(28, -16),
+		Vector2(0,   -38),
+	])
+	house.add_child(roof)
+
+	# 門洞（深棕）
+	var door_vis := Polygon2D.new()
+	door_vis.color = Color(0.25, 0.15, 0.08, 1.0)
+	door_vis.polygon = PackedVector2Array([
+		Vector2(-5, -1), Vector2(5, -1),
+		Vector2(5,  16), Vector2(-5, 16),
+	])
+	house.add_child(door_vis)
+
+	# 左窗（淡黃）
+	var win := Polygon2D.new()
+	win.color = Color(0.95, 0.88, 0.55, 0.85)
+	win.polygon = PackedVector2Array([
+		Vector2(-21, -8), Vector2(-11, -8),
+		Vector2(-11,  2), Vector2(-21,  2),
+	])
+	house.add_child(win)
+
+	# 右窗
+	var win2 := Polygon2D.new()
+	win2.color = win.color
+	win2.polygon = PackedVector2Array([
+		Vector2(11, -8), Vector2(21, -8),
+		Vector2(21,  2), Vector2(11,  2),
+	])
+	house.add_child(win2)
+
+	$YSort.add_child(house)
+
+	# ── 碰撞體（擋住房屋本體）────────────────────────────────────────────
+	_make_wall(Vector2(8, -196), Vector2(56, 32))
+
+	# ── 門口睡覺觸發區 ───────────────────────────────────────────────────
+	var door       := Area2D.new()
+	var col        := CollisionShape2D.new()
+	var shape      := RectangleShape2D.new()
+	shape.size     = Vector2(32, 12)
+	col.shape      = shape
+	door.position  = Vector2(8, -173)
+	door.set_script(preload("res://scripts/world/sleep_door.gd"))
+	door.add_child(col)
+	add_child(door)
 
 
 # ── 工具 ─────────────────────────────────────────────────────────────────
