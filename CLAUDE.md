@@ -102,7 +102,8 @@ Follow this loop every time you implement a feature:
    - End with: "✋ 請測試以上案例，確認後告訴我"
    - Then **wait for the user's response**
 4. **Fix bugs** — if the user reports issues, fix them and ask them to re-test
-5. **Commit only when asked** — NEVER run `git commit` or `git push` unless the user explicitly says "commit" or "commit+push"
+5. **Update spec** — once the user confirms everything is working, IMMEDIATELY update `docs/project-spec.md`: mark completed tasks as `✅ 完成` and update the Story progress count. Do NOT wait to be asked.
+6. **Commit only when asked** — NEVER run `git commit` or `git push` unless the user explicitly says "commit" or "commit+push"
 
 Do NOT assume tests pass. Do NOT auto-commit after finishing code.
 
