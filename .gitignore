@@ -15,4 +15,4 @@ itch.cfg
 Thumbs.db
 
 # Tools
-.claude/
+.claude/settings.local.json
