@@ -3,10 +3,10 @@
 extends Control
 
 const TOOLS       : Array[String] = ["hoe", "watering_can", "seeds"]
-const TOOL_LABELS : Dictionary    = {
-	"hoe":          "鋤頭",
-	"watering_can": "水壺",
-	"seeds":        "種子",
+const TOOL_TR_KEYS : Dictionary   = {
+	"hoe":          "TOOL_HOE",
+	"watering_can": "TOOL_WATERING_CAN",
+	"seeds":        "TOOL_SEEDS",
 }
 const TOOL_COLORS : Dictionary    = {
 	"hoe":          Color(0.80, 0.58, 0.28, 1.0),
@@ -46,7 +46,7 @@ func _draw() -> void:
 		draw_rect(rect, border, false, 1.5)
 
 		# 文字標籤
-		var label : String = TOOL_LABELS[TOOLS[i]]
+		var label : String = tr(TOOL_TR_KEYS[TOOLS[i]])
 		var font   := ThemeDB.fallback_font
 		var fs     := FONT_SZ
 		var tw     : float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x

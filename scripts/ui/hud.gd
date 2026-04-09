@@ -26,6 +26,7 @@ func _ready() -> void:
 	TimeManager.time_changed.connect(_on_time_changed)
 	TimeManager.day_changed.connect(_on_day_changed)
 	EconomyManager.gold_changed.connect(_on_gold_changed)
+	LocaleManager.locale_changed.connect(_on_locale_changed)
 	_on_time_changed(TimeManager.hour, TimeManager.minute)
 	_on_day_changed(TimeManager.day, TimeManager.season, TimeManager.year)
 	_on_gold_changed(EconomyManager.gold)
@@ -42,12 +43,19 @@ func _on_time_changed(h: int, m: int) -> void:
 	_time_label.text = "%02d:%02d" % [h, m]
 
 
-func _on_day_changed(d: int, s: int, _y: int) -> void:
-	_date_label.text = "%s 第%d天" % [TimeManager.SEASONS[s], d]
+func _on_day_changed(_d: int, _s: int, _y: int) -> void:
+	_date_label.text = TimeManager.get_date_string()
 
 
 func _on_gold_changed(amount: int) -> void:
-	_gold_label.text = "G %d" % amount
+	_gold_label.text = tr("HUD_GOLD") % amount
+
+
+func _on_locale_changed(_locale: String) -> void:
+	# 語系切換後強制刷新所有文字
+	_date_label.text = TimeManager.get_date_string()
+	_gold_label.text = tr("HUD_GOLD") % EconomyManager.gold
+	_toolbar.queue_redraw()
 
 
 # ── 體力條 ────────────────────────────────────────────────────────────────

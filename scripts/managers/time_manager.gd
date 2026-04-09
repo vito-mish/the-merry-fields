@@ -10,8 +10,8 @@ const HOURS_PER_DAY    := 24
 const MINUTES_PER_HOUR := 60
 const DAYS_PER_SEASON  := 28
 
-const SEASONS          : Array[String] = ["春", "夏", "秋", "冬"]
 const SEASON_EN        : Array[String] = ["spring", "summer", "autumn", "winter"]
+const SEASON_KEYS      : Array[String] = ["SEASON_SPRING", "SEASON_SUMMER", "SEASON_FALL", "SEASON_WINTER"]
 
 ## 每天起床時間
 const DAY_START_HOUR   := 6
@@ -59,17 +59,17 @@ func get_time_string() -> String:
 
 
 func get_date_string() -> String:
-	return "%s 第%d天" % [SEASONS[season], day]
+	return tr("HUD_DATE") % [tr(SEASON_KEYS[season]), day]
 
 
-## 時段：深夜/早晨/上午/下午/傍晚/夜晚
+## 時段（依語系）
 func get_period() -> String:
-	if hour < 6:   return "深夜"
-	if hour < 9:   return "早晨"
-	if hour < 12:  return "上午"
-	if hour < 18:  return "下午"
-	if hour < 21:  return "傍晚"
-	return "夜晚"
+	if hour < 6:   return tr("PERIOD_MIDNIGHT")
+	if hour < 9:   return tr("PERIOD_MORNING")
+	if hour < 12:  return tr("PERIOD_FORENOON")
+	if hour < 18:  return tr("PERIOD_AFTERNOON")
+	if hour < 21:  return tr("PERIOD_EVENING")
+	return tr("PERIOD_NIGHT")
 
 
 # ── 私有 ─────────────────────────────────────────────────────────────────
