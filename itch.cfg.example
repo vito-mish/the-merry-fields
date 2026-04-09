@@ -1,0 +1,9 @@
+# itch.io 上傳設定
+# 複製此檔為 itch.cfg 並填入你的資訊（itch.cfg 已加入 .gitignore）
+
+# itch.io 帳號名稱（網址顯示的那個）
+ITCH_USER=your-username
+
+# itch.io 遊戲 slug（建立遊戲頁面後從網址取得）
+# 例如 https://your-username.itch.io/the-merry-fields → the-merry-fields
+ITCH_GAME=the-merry-fields

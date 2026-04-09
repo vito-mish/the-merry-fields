@@ -7,6 +7,9 @@ export/
 dist/
 steam_build_output/
 
+# itch.io 帳號設定（不進版本控制）
+itch.cfg
+
 # OS
 .DS_Store
 Thumbs.db
