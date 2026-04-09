@@ -1,0 +1,13 @@
+"DepotBuildConfig"
+{
+    // TODO: 填入 Linux Depot ID（通常為 AppID + 3）
+    "DepotID"   "XXXXXXX3"
+    "ContentRoot"   "../export/linux/"
+
+    "FileMapping"
+    {
+        "LocalPath"  "*"
+        "DepotPath"  "."
+        "Recursive"  "1"
+    }
+}

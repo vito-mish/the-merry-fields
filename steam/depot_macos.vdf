@@ -1,0 +1,13 @@
+"DepotBuildConfig"
+{
+    // TODO: 填入 macOS Depot ID（通常為 AppID + 2）
+    "DepotID"   "XXXXXXX2"
+    "ContentRoot"   "../export/macos/"
+
+    "FileMapping"
+    {
+        "LocalPath"  "*"
+        "DepotPath"  "."
+        "Recursive"  "1"
+    }
+}

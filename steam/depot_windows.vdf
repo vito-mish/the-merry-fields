@@ -1,0 +1,16 @@
+"DepotBuildConfig"
+{
+    // TODO: 填入 Windows Depot ID（通常為 AppID + 1）
+    "DepotID"   "XXXXXXX1"
+    "ContentRoot"   "../export/windows/"
+
+    "FileMapping"
+    {
+        "LocalPath"  "*"
+        "DepotPath"  "."
+        "Recursive"  "1"
+    }
+
+    // 排除不需要上傳的檔案
+    "FileExclusion" "*.pdb"
+}

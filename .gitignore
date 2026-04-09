@@ -2,8 +2,10 @@
 .godot/
 *.translation
 
-# Export
+# Export & build output
 export/
+dist/
+steam_build_output/
 
 # OS
 .DS_Store

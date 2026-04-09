@@ -1,0 +1,31 @@
+"AppBuild"
+{
+    // ── 基本設定 ──────────────────────────────────────────────────────────
+    // TODO: 填入你的 Steam App ID
+    "appid"         "XXXXXXX"
+
+    // 此次 build 描述（顯示在 Steamworks 後台）
+    "desc"          "The Merry Fields v0.1.0"
+
+    // 上傳後是否設為目前版本（1=是）
+    "setlive"       ""
+
+    // 是否為測試 build（1=只上傳不發布）
+    "preview"       "0"
+
+    // 本地 build 輸出目錄（SteamCMD 工作目錄相對路徑）
+    "buildoutput"   "../steam_build_output/"
+
+    // ── Depot 清單 ────────────────────────────────────────────────────────
+    "depots"
+    {
+        // Windows depot
+        "XXXXXXX1"  { "FileMapping" { "LocalPath" "../export/windows/*"  "DepotPath" "." "Recursive" "1" } }
+
+        // macOS depot
+        "XXXXXXX2"  { "FileMapping" { "LocalPath" "../export/macos/*"    "DepotPath" "." "Recursive" "1" } }
+
+        // Linux depot
+        "XXXXXXX3"  { "FileMapping" { "LocalPath" "../export/linux/*"    "DepotPath" "." "Recursive" "1" } }
+    }
+}
