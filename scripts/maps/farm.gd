@@ -16,7 +16,18 @@ const SOURCE_ID := 0
 const LAYER     := 0
 const FARM_SIZE := 30  # -30 to +29 tiles
 
+# 根節點環境光（輕微，影響玩家/樹/建築）
+const SEASON_COLORS : Array[Color] = [
+	Color(0.95, 1.00, 0.93),  # 春：淡綠
+	Color(1.00, 0.97, 0.82),  # 夏：淡黃
+	Color(1.00, 0.88, 0.72),  # 秋：淡橙
+	Color(0.78, 0.85, 1.00),  # 冬：淡藍
+]
+
+const _TILESET_TEX := preload("res://assets/tilesets/farm_tiles.png")
+
 @onready var tile_map: TileMap = $TileMap
+var _tile_source : TileSetAtlasSource
 
 
 func _ready() -> void:
@@ -29,20 +40,21 @@ func _ready() -> void:
 	_add_trees()
 	_add_shipping_box()
 	_add_house()
+	_add_season_overlay()
 
 
 func _setup_tileset() -> void:
 	var ts := TileSet.new()
 	ts.tile_size = Vector2i(16, 16)
 
-	var source := TileSetAtlasSource.new()
-	source.texture = preload("res://assets/tilesets/farm_tiles.png")
-	source.texture_region_size = Vector2i(16, 16)
+	_tile_source = TileSetAtlasSource.new()
+	_tile_source.texture = _make_season_atlas(TimeManager.season)
+	_tile_source.texture_region_size = Vector2i(16, 16)
 
 	for coord in [T_GRASS, T_DIRT, T_TILLED, T_WATERED, T_PATH, T_FENCE, T_WATER, T_BORDER]:
-		source.create_tile(coord)
+		_tile_source.create_tile(coord)
 
-	ts.add_source(source, SOURCE_ID)
+	ts.add_source(_tile_source, SOURCE_ID)
 	tile_map.tile_set = ts
 
 
@@ -307,6 +319,25 @@ func _add_house() -> void:
 	door.set_script(preload("res://scripts/world/sleep_door.gd"))
 	door.add_child(col)
 	add_child(door)
+
+
+# ── 季節色調疊層 ─────────────────────────────────────────────────────────
+
+func _add_season_overlay() -> void:
+	_apply_season(TimeManager.season)
+	TimeManager.season_changed.connect(_apply_season)
+
+
+func _apply_season(s: int) -> void:
+	modulate = SEASON_COLORS[s]
+	_tile_source.texture = _make_season_atlas(s)
+
+
+func _make_season_atlas(s: int) -> AtlasTexture:
+	var at := AtlasTexture.new()
+	at.atlas  = _TILESET_TEX
+	at.region = Rect2(0, s * 16, 128, 16)
+	return at
 
 
 # ── 工具 ─────────────────────────────────────────────────────────────────

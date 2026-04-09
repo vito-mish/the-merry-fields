@@ -3,35 +3,35 @@
 extends Node
 
 # ── 常數 ─────────────────────────────────────────────────────────────────
-const HOURS_PER_DAY    := 24
+const HOURS_PER_DAY := 24
 const MINUTES_PER_HOUR := 60
 
-const SEASON_EN        : Array[String] = ["spring", "summer", "autumn", "winter"]
-const SEASON_KEYS      : Array[String] = ["SEASON_SPRING", "SEASON_SUMMER", "SEASON_FALL", "SEASON_WINTER"]
+const SEASON_EN: Array[String] = ["spring", "summer", "autumn", "winter"]
+const SEASON_KEYS: Array[String] = ["SEASON_SPRING", "SEASON_SUMMER", "SEASON_FALL", "SEASON_WINTER"]
 
 const DAY_START_MINUTE := 0
 
 # ── 狀態 ─────────────────────────────────────────────────────────────────
-var hour   : int = GameConfig.DAY_START_HOUR
-var minute : int = DAY_START_MINUTE
-var day    : int = 1
-var season : int = 0   # 0=春 1=夏 2=秋 3=冬
-var year   : int = 1
+var hour: int = GameConfig.DAY_START_HOUR
+var minute: int = DAY_START_MINUTE
+var day: int = 1
+var season: int = 0 # 0=春 1=夏 2=秋 3=冬
+var year: int = 1
 
-var paused : bool = false
+var paused: bool = false
 
-var _accum : float = 0.0
+var _accum: float = 0.0
 
 # 每天已觸發過的夜深時間（避免重複發訊號）
-var _late_night_notified : Array = []   # 記錄哪些整點已通知過
-var _forced_sleep_done   : bool  = false
+var _late_night_notified: Array = [] # 記錄哪些整點已通知過
+var _forced_sleep_done: bool = false
 
 # ── 訊號 ─────────────────────────────────────────────────────────────────
 signal time_changed(hour: int, minute: int)
 signal day_changed(day: int, season: int, year: int)
 signal season_changed(season: int)
-signal late_night(hour: int)  ## 01:00 / 02:00 / 03:00：依時間給予提示
-signal forced_sleep           ## 04:00：強制暈倒
+signal late_night(hour: int) ## 01:00 / 02:00 / 03:00：依時間給予提示
+signal forced_sleep ## 04:00：強制暈倒
 
 
 func _process(delta: float) -> void:
@@ -47,7 +47,7 @@ func _process(delta: float) -> void:
 
 ## 睡覺後推進到隔天早上
 func advance_to_next_day() -> void:
-	hour   = GameConfig.DAY_START_HOUR
+	hour = GameConfig.DAY_START_HOUR
 	minute = DAY_START_MINUTE
 	_accum = 0.0
 	_late_night_notified.clear()
@@ -66,11 +66,11 @@ func get_date_string() -> String:
 
 ## 時段（依語系）
 func get_period() -> String:
-	if hour < 6:   return tr("PERIOD_MIDNIGHT")
-	if hour < 9:   return tr("PERIOD_MORNING")
-	if hour < 12:  return tr("PERIOD_FORENOON")
-	if hour < 18:  return tr("PERIOD_AFTERNOON")
-	if hour < 21:  return tr("PERIOD_EVENING")
+	if hour < 6: return tr("PERIOD_MIDNIGHT")
+	if hour < 9: return tr("PERIOD_MORNING")
+	if hour < 12: return tr("PERIOD_FORENOON")
+	if hour < 18: return tr("PERIOD_AFTERNOON")
+	if hour < 21: return tr("PERIOD_EVENING")
 	return tr("PERIOD_NIGHT")
 
 

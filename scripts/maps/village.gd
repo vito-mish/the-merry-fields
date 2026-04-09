@@ -16,10 +16,20 @@ const LAYER     := 0
 const VW := 40
 const VH := 25
 
+const SEASON_COLORS : Array[Color] = [
+	Color(0.95, 1.00, 0.93),
+	Color(1.00, 0.97, 0.82),
+	Color(1.00, 0.88, 0.72),
+	Color(0.78, 0.85, 1.00),
+]
+
+const _TILESET_TEX := preload("res://assets/tilesets/farm_tiles.png")
+
 @onready var tile_map: TileMap = $TileMap
 
 # 建築區域（用於放置靜態碰撞體）
 var _building_rects : Array[Rect2] = []
+var _tile_source : TileSetAtlasSource
 
 
 func _ready() -> void:
@@ -30,6 +40,7 @@ func _ready() -> void:
 	_add_scene_exits()
 	_add_spawn_points()
 	_add_trees()
+	_add_season_overlay()
 
 
 # ── Tileset ───────────────────────────────────────────────────────────────
@@ -38,8 +49,9 @@ func _setup_tileset() -> void:
 	var ts := TileSet.new()
 	ts.tile_size = Vector2i(16, 16)
 
-	var src := TileSetAtlasSource.new()
-	src.texture = preload("res://assets/tilesets/farm_tiles.png")
+	_tile_source = TileSetAtlasSource.new()
+	var src := _tile_source
+	src.texture = _make_season_atlas(TimeManager.season)
 	src.texture_region_size = Vector2i(16, 16)
 
 	for coord in [T_GRASS, T_DIRT, T_PATH, T_WATER, T_BORDER]:
@@ -240,6 +252,25 @@ func _add_trees() -> void:
 		tree.seed_val     = i * 137 + 42
 		tree.scale_factor = 0.9 + (i % 3) * 0.1
 		ysort.add_child(tree)
+
+
+# ── 季節色調疊層 ─────────────────────────────────────────────────────────
+
+func _add_season_overlay() -> void:
+	_apply_season(TimeManager.season)
+	TimeManager.season_changed.connect(_apply_season)
+
+
+func _apply_season(s: int) -> void:
+	modulate = SEASON_COLORS[s]
+	_tile_source.texture = _make_season_atlas(s)
+
+
+func _make_season_atlas(s: int) -> AtlasTexture:
+	var at := AtlasTexture.new()
+	at.atlas  = _TILESET_TEX
+	at.region = Rect2(0, s * 16, 128, 16)
+	return at
 
 
 # ── 工具 ─────────────────────────────────────────────────────────────────
