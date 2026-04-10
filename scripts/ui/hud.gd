@@ -21,11 +21,12 @@ const TOOL_COLORS : Dictionary = {
 const SLOT_SIZE   : int = 18
 const SLOT_GAP    : int = 2
 
-@onready var _time_label  : Label       = $TimePanel/VBox/TimeLabel
-@onready var _date_label  : Label       = $TimePanel/VBox/DateLabel
-@onready var _gold_label  : Label       = $GoldLabel
-@onready var _stamina_bar : ProgressBar = $StaminaBar
-@onready var _toolbar     : Control     = $Toolbar
+@onready var _time_label    : Label       = $TimePanel/VBox/TimeLabel
+@onready var _date_label    : Label       = $TimePanel/VBox/DateLabel
+@onready var _weather_label : Label       = $TimePanel/VBox/WeatherLabel
+@onready var _gold_label    : Label       = $GoldLabel
+@onready var _stamina_bar   : ProgressBar = $StaminaBar
+@onready var _toolbar       : Control     = $Toolbar
 
 
 func _ready() -> void:
@@ -36,9 +37,11 @@ func _ready() -> void:
 	TimeManager.forced_sleep.connect(func() -> void: show_notification(tr("NOTIFY_FAINTED")))
 	EconomyManager.gold_changed.connect(_on_gold_changed)
 	LocaleManager.locale_changed.connect(_on_locale_changed)
+	WeatherManager.weather_changed.connect(_on_weather_changed)
 	_on_time_changed(TimeManager.hour, TimeManager.minute)
 	_on_day_changed(TimeManager.day, TimeManager.season, TimeManager.year)
 	_on_gold_changed(EconomyManager.gold)
+	_on_weather_changed(WeatherManager.current_weather)
 	_build_overlay_labels()
 
 
@@ -63,6 +66,10 @@ func _on_day_changed(_d: int, _s: int, _y: int) -> void:
 
 func _on_gold_changed(amount: int) -> void:
 	_gold_label.text = tr("HUD_GOLD") % amount
+
+
+func _on_weather_changed(weather: int) -> void:
+	_weather_label.text = WeatherManager.get_weather_label()
 
 
 func _on_locale_changed(_locale: String) -> void:

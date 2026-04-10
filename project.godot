@@ -27,6 +27,8 @@ GameConfig="*res://scripts/config/game_config.gd"
 TransitionManager="*res://scripts/managers/transition_manager.gd"
 TimeManager="*res://scripts/managers/time_manager.gd"
 EconomyManager="*res://scripts/managers/economy_manager.gd"
+WeatherManager="*res://scripts/managers/weather_manager.gd"
+WeatherEffect="*res://scripts/managers/weather_effect.gd"
 LocaleManager="*res://scripts/managers/locale_manager.gd"
 DebugPanel="*res://scripts/debug/debug_panel.gd"
 
