@@ -5,7 +5,7 @@ var stamina : float = GameConfig.STAMINA_MAX
 
 # ── 工具 ─────────────────────────────────────────────────────────────────
 ## 可用工具清單
-const TOOLS : Array[String] = ["hoe", "watering_can", "seeds"]
+const TOOLS : Array[String] = ["hoe", "watering_can", "seeds", "fertilizer"]
 ## 目前選擇的工具索引
 var tool_index : int    = 0
 var current_tool: String:
@@ -85,6 +85,13 @@ func _use_tool() -> void:
 			if state == "tilled" or state == "watered":
 				if consume_stamina(cost):
 					farm_grid.plant(tile_pos, seed_crop_id)
+
+		"fertilizer":
+			var state : String = farm_grid.get_tile_state(tile_pos)
+			if state == "tilled" or state == "watered" or state == "planted":
+				if not farm_grid.is_fertilized(tile_pos):
+					if consume_stamina(cost):
+						farm_grid.fertilize(tile_pos)
 
 	# 成熟作物隨時可收成（不限工具）
 	if farm_grid.is_mature(tile_pos):

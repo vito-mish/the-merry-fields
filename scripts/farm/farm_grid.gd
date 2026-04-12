@@ -1,5 +1,5 @@
-## FarmGrid — 農地 Tile 狀態管理 (S04-T01~T08)
-## 掛在 Farm 場景下，管理每塊農地的翻土/澆水/播種/生長/收成
+## FarmGrid — 農地 Tile 狀態管理 (S04-T01~T08, T04)
+## 掛在 Farm 場景下，管理每塊農地的翻土/澆水/播種/施肥/生長/收成
 extends Node
 
 # ── 常數 ─────────────────────────────────────────────────────────────────
@@ -29,6 +29,10 @@ var _tiles     : Dictionary = {}   # 公開供 debug 讀取
 # key: Vector2i, value: Node2D
 var _crop_nodes: Dictionary = {}
 
+# 施肥視覺節點
+# key: Vector2i, value: Node2D
+var _fertilized_nodes: Dictionary = {}
+
 @onready var _tile_map : TileMap = get_parent().get_node("TileMap")
 @onready var _ysort    : Node2D  = get_parent().get_node("YSort")
 
@@ -44,15 +48,20 @@ func _ready() -> void:
 
 # ── 公開 API ─────────────────────────────────────────────────────────────
 
-## 翻土（鋤頭）：DIRT → TILLED
+## 翻土（鋤頭）：DIRT → TILLED（雨天直接 WATERED）
 func till(tile_pos: Vector2i) -> bool:
 	if not _is_farmable(tile_pos):
 		return false
 	var atlas := _tile_map.get_cell_atlas_coords(LAYER, tile_pos)
 	if atlas != T_DIRT:
 		return false
-	_tile_map.set_cell(LAYER, tile_pos, SOURCE_ID, T_TILLED)
-	_tiles[tile_pos] = { "state": "tilled", "watered_today": false }
+	if WeatherManager.is_raining() or WeatherManager.is_snowing():
+		# 雨天/雪天翻土：直接變澆水狀態（S04-T10 部分實作）
+		_tile_map.set_cell(LAYER, tile_pos, SOURCE_ID, T_WATERED)
+		_tiles[tile_pos] = { "state": "watered", "watered_today": true }
+	else:
+		_tile_map.set_cell(LAYER, tile_pos, SOURCE_ID, T_TILLED)
+		_tiles[tile_pos] = { "state": "tilled", "watered_today": false }
 	return true
 
 
@@ -72,6 +81,28 @@ func water(tile_pos: Vector2i) -> bool:
 		_tile_map.set_cell(LAYER, tile_pos, SOURCE_ID, T_WATERED)
 		return true
 	return false
+
+
+## 施肥（肥料）：在 TILLED / WATERED / PLANTED 格施肥，每格只能施一次
+func fertilize(tile_pos: Vector2i) -> bool:
+	if not _tiles.has(tile_pos):
+		return false
+	var t : Dictionary = _tiles[tile_pos]
+	var state : String = t["state"]
+	if state != "tilled" and state != "watered" and state != "planted":
+		return false
+	if t.get("fertilized", false):
+		return false   # 已施過肥，不重複
+	t["fertilized"] = true
+	_spawn_fertilized_visual(tile_pos)
+	return true
+
+
+## 查詢某格是否已施肥
+func is_fertilized(tile_pos: Vector2i) -> bool:
+	if not _tiles.has(tile_pos):
+		return false
+	return _tiles[tile_pos].get("fertilized", false)
 
 
 ## 播種：TILLED / WATERED → PLANTED
@@ -119,14 +150,23 @@ func harvest(tile_pos: Vector2i) -> bool:
 		t["growth_stage"] = 0
 		t["day_planted"]  = TimeManager.day
 		t["days_watered"] = 0
+		# 多次收成後施肥效果消失（下次需重新施肥）
+		t["fertilized"] = false
+		_clear_fertilized_visual(tile_pos)
 		_update_crop_visual(tile_pos)
 	else:
-		# 清除
-		_tiles.erase(tile_pos)
+		# 移除作物，土壤保留翻土/澆水狀態（不退回原始泥土）
+		_clear_fertilized_visual(tile_pos)
 		if _crop_nodes.has(tile_pos):
 			_crop_nodes[tile_pos].queue_free()
 			_crop_nodes.erase(tile_pos)
-		_tile_map.set_cell(LAYER, tile_pos, SOURCE_ID, T_DIRT)
+		var was_watered : bool = t.get("watered_today", false)
+		if was_watered:
+			_tiles[tile_pos] = { "state": "watered", "watered_today": true }
+			_tile_map.set_cell(LAYER, tile_pos, SOURCE_ID, T_WATERED)
+		else:
+			_tiles[tile_pos] = { "state": "tilled", "watered_today": false }
+			_tile_map.set_cell(LAYER, tile_pos, SOURCE_ID, T_TILLED)
 	return true
 
 
@@ -195,6 +235,20 @@ func _on_day_changed(_day: int, _season: int, _year: int) -> void:
 	# 枯死的作物
 	for pos in to_kill:
 		_kill_crop(pos)
+
+	# 雨天 / 雪天：新的一天開始自動澆水所有耕地（S04-T10）
+	if WeatherManager.is_raining() or WeatherManager.is_snowing():
+		for pos : Vector2i in _tiles.keys():
+			var t : Dictionary = _tiles[pos]
+			if t["state"] == "tilled":
+				t["state"] = "watered"
+				t["watered_today"] = true
+				_tile_map.set_cell(LAYER, pos, SOURCE_ID, T_WATERED)
+			elif t["state"] == "planted":
+				var data : Dictionary = _crop_db[t["crop_id"]]
+				if t["growth_stage"] < _total_stages(data):
+					t["watered_today"] = true
+					_tile_map.set_cell(LAYER, pos, SOURCE_ID, T_WATERED)
 
 
 # ── 視覺 ─────────────────────────────────────────────────────────────────
@@ -271,7 +325,47 @@ func _circle(r: float, pts: int) -> PackedVector2Array:
 	return arr
 
 
+## 施肥視覺：整格半透明棕色疊層 + 散布的肥料顆粒小點
+func _spawn_fertilized_visual(tile_pos: Vector2i) -> void:
+	_clear_fertilized_visual(tile_pos)
+	var node := Node2D.new()
+	# tile 左上角為原點，整格 16×16
+	node.position = Vector2(tile_pos.x * 16, tile_pos.y * 16)
+	node.z_index  = 0   # 在 tile 上方，作物下方
+
+	# 半透明棕色疊層（覆蓋整格，讓耕地顏色有變化）
+	var overlay    := Polygon2D.new()
+	overlay.color   = Color(0.48, 0.30, 0.08, 0.40)
+	overlay.polygon = PackedVector2Array([
+		Vector2(0, 0), Vector2(16, 0),
+		Vector2(16, 16), Vector2(0, 16)
+	])
+	node.add_child(overlay)
+
+	# 散布 5 個深棕色小顆粒，代表肥料
+	var grain_positions : Array[Vector2] = [
+		Vector2(3, 4), Vector2(10, 3), Vector2(6, 9),
+		Vector2(13, 7), Vector2(4, 13),
+	]
+	for gp : Vector2 in grain_positions:
+		var grain   := Polygon2D.new()
+		grain.color  = Color(0.35, 0.20, 0.05, 0.85)
+		grain.polygon = _circle(1.2, 6)
+		grain.position = gp
+		node.add_child(grain)
+
+	_ysort.add_child(node)
+	_fertilized_nodes[tile_pos] = node
+
+
+func _clear_fertilized_visual(tile_pos: Vector2i) -> void:
+	if _fertilized_nodes.has(tile_pos):
+		_fertilized_nodes[tile_pos].queue_free()
+		_fertilized_nodes.erase(tile_pos)
+
+
 func _kill_crop(tile_pos: Vector2i) -> void:
+	_clear_fertilized_visual(tile_pos)
 	_tiles.erase(tile_pos)
 	if _crop_nodes.has(tile_pos):
 		_crop_nodes[tile_pos].queue_free()
@@ -291,8 +385,10 @@ func _calc_stage(t: Dictionary, data: Dictionary) -> int:
 	return clampi(days, 0, total)
 
 
-func _calc_quality(_t: Dictionary) -> String:
-	# 未來可依澆水天數、施肥決定品質（S04-T11）
+func _calc_quality(t: Dictionary) -> String:
+	# 施肥可提升品質（S04-T04）；完整品質計算見 S04-T11
+	if t.get("fertilized", false):
+		return "good"
 	return "normal"
 
 

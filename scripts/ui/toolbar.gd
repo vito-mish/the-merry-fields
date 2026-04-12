@@ -2,16 +2,18 @@
 ## 顯示三個工具格，當前選中的格子高亮
 extends Control
 
-const TOOLS       : Array[String] = ["hoe", "watering_can", "seeds"]
+const TOOLS       : Array[String] = ["hoe", "watering_can", "seeds", "fertilizer"]
 const TOOL_TR_KEYS : Dictionary   = {
 	"hoe":          "TOOL_HOE",
 	"watering_can": "TOOL_WATERING_CAN",
 	"seeds":        "TOOL_SEEDS",
+	"fertilizer":   "TOOL_FERTILIZER",
 }
 const TOOL_COLORS : Dictionary    = {
 	"hoe":          Color(0.80, 0.58, 0.28, 1.0),
 	"watering_can": Color(0.28, 0.60, 0.90, 1.0),
 	"seeds":        Color(0.35, 0.78, 0.32, 1.0),
+	"fertilizer":   Color(0.72, 0.50, 0.18, 1.0),
 }
 
 const SLOT_W   := 22

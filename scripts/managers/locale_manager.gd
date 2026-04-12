@@ -26,6 +26,7 @@ const _ZH_TW : Dictionary = {
 	"TOOL_HOE":           "鋤頭",
 	"TOOL_WATERING_CAN":  "水壺",
 	"TOOL_SEEDS":         "種子",
+	"TOOL_FERTILIZER":    "肥料",
 	# 時段
 	"PERIOD_MIDNIGHT":    "深夜",
 	"PERIOD_MORNING":     "早晨",
@@ -61,6 +62,7 @@ const _EN : Dictionary = {
 	"TOOL_HOE":           "Hoe",
 	"TOOL_WATERING_CAN":  "Can",
 	"TOOL_SEEDS":         "Seeds",
+	"TOOL_FERTILIZER":    "Fert",
 	# Time of day
 	"PERIOD_MIDNIGHT":    "Midnight",
 	"PERIOD_MORNING":     "Morning",

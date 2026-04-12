@@ -20,6 +20,7 @@ const TOOL_STAMINA: Dictionary = {
 	"hoe": 4.0,
 	"watering_can": 2.0,
 	"seeds": 1.0,
+	"fertilizer": 3.0,
 }
 
 # ── 懲罰 ─────────────────────────────────────────────────────────────────
