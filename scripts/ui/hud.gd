@@ -43,15 +43,8 @@ func _ready() -> void:
 	_on_gold_changed(EconomyManager.gold)
 	_on_weather_changed(WeatherManager.current_weather)
 	_build_overlay_labels()
-
-
-func _process(delta: float) -> void:
-	_refresh_stamina()
-	_toolbar.queue_redraw()
-	if _notify_timer > 0.0:
-		_notify_timer -= delta
-		if _notify_timer <= 0.0:
-			_notify_label.hide()
+	# 出貨箱結算報表（延遲一幀確保 shipping_box 已加入場景）
+	call_deferred("_connect_shipping_box")
 
 
 # ── 時間訊號 ──────────────────────────────────────────────────────────────
@@ -137,6 +130,26 @@ func _on_late_night(h: int) -> void:
 
 func show_notification(text: String) -> void:
 	_notify_label.text = text
+	_notify_label.modulate = Color(1.0, 1.0, 0.5, 1.0)
+	_notify_label.show()
+	_notify_timer = NOTIFY_DURATION
+
+
+func show_harvest_notification(quality: String) -> void:
+	var text  : String
+	var color : Color
+	match quality:
+		"premium":
+			text  = "[精品] 收成！"
+			color = Color(0.85, 0.35, 1.0, 1.0)   # 紫色
+		"good":
+			text  = "[優良] 收成！"
+			color = Color(1.00, 0.85, 0.20, 1.0)  # 金色
+		_:
+			text  = "收成！"
+			color = Color(1.00, 1.00, 0.50, 1.0)  # 黃色（普通）
+	_notify_label.text    = text
+	_notify_label.modulate = color
 	_notify_label.show()
 	_notify_timer = NOTIFY_DURATION
 
@@ -148,3 +161,97 @@ func show_hint(text: String) -> void:
 
 func hide_hint() -> void:
 	_hint_label.hide()
+
+
+# ── 出貨結算報表 ──────────────────────────────────────────────────────────────
+
+var _report_panel  : PanelContainer
+var _report_label  : Label
+var report_open    : bool = false   # Player 讀取此值來鎖定移動
+
+
+func _connect_shipping_box() -> void:
+	var box : Node = get_tree().get_first_node_in_group("shipping_box")
+	if box:
+		box.items_shipped.connect(_on_items_shipped)
+
+
+func _on_items_shipped(total_gold: int, lines: Array) -> void:
+	var text := "出貨結算\n"
+	for line in lines:
+		text += "%s [%s] x%d  +%dG\n" % [
+			line["name"], line["quality_label"], line["count"], line["subtotal"]
+		]
+	text += "----------\n合計  +%dG" % total_gold
+	_show_report(text)
+
+
+func _show_report(text: String) -> void:
+	if _report_panel == null:
+		_build_report_panel()
+	_report_label.text = text
+	_report_panel.show()
+	report_open = true
+
+
+func _close_report() -> void:
+	_report_panel.hide()
+	report_open = false
+
+
+func _build_report_panel() -> void:
+	_report_panel = PanelContainer.new()
+	_report_panel.anchor_left   = 0.5
+	_report_panel.anchor_right  = 0.5
+	_report_panel.anchor_top    = 0.5
+	_report_panel.anchor_bottom = 0.5
+	_report_panel.offset_left   = -72.0
+	_report_panel.offset_right  =  72.0
+	_report_panel.offset_top    = -55.0
+	_report_panel.offset_bottom =  55.0
+
+	var style := StyleBoxFlat.new()
+	style.bg_color                   = Color(0.08, 0.08, 0.10, 0.92)
+	style.border_width_left          = 1
+	style.border_width_right         = 1
+	style.border_width_top           = 1
+	style.border_width_bottom        = 1
+	style.border_color               = Color(0.70, 0.65, 0.30, 1.0)
+	style.corner_radius_top_left     = 3
+	style.corner_radius_top_right    = 3
+	style.corner_radius_bottom_left  = 3
+	style.corner_radius_bottom_right = 3
+	_report_panel.add_theme_stylebox_override("panel", style)
+
+	# 垂直容器
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	_report_panel.add_child(vbox)
+
+	# 報表文字
+	_report_label = Label.new()
+	_report_label.add_theme_font_size_override("font_size", 7)
+	_report_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_report_label.modulate = Color(1.0, 1.0, 0.85, 1.0)
+	vbox.add_child(_report_label)
+
+	# 關閉按鈕
+	var btn        := Button.new()
+	btn.text        = "[ 確認 ]"
+	btn.add_theme_font_size_override("font_size", 7)
+	btn.flat        = true
+	btn.modulate    = Color(1.0, 0.85, 0.30, 1.0)
+	btn.pressed.connect(_close_report)
+	vbox.add_child(btn)
+
+	_report_panel.hide()
+	add_child(_report_panel)
+
+
+func _process(delta: float) -> void:
+	_refresh_stamina()
+	_toolbar.queue_redraw()
+	if _notify_timer > 0.0:
+		_notify_timer -= delta
+		if _notify_timer <= 0.0:
+			_notify_label.hide()

@@ -39,6 +39,7 @@ func _build() -> void:
 	trunk.color   = brown
 	trunk.polygon = PackedVector2Array([
 		Vector2(-hw, 0), Vector2(hw, 0),
+
 		Vector2(hw - 1, -th), Vector2(-hw + 1, -th)
 	])
 	add_child(trunk)

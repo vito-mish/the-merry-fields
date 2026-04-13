@@ -119,6 +119,7 @@ func plant(tile_pos: Vector2i, crop_id: String) -> bool:
 	t["crop_id"]       = crop_id
 	t["day_planted"]   = TimeManager.day
 	t["days_watered"]  = 0
+	t["missed_water"]  = 0   # 生長期間漏澆水的天數
 	t["growth_stage"]  = 0
 	t["dry_days"]      = 0
 	t["watered_today"] = was_watered   # 保留澆水狀態，讓隔天推進正確計算
@@ -126,16 +127,16 @@ func plant(tile_pos: Vector2i, crop_id: String) -> bool:
 	return true
 
 
-## 收成：成熟的作物 → 獲得物品
-func harvest(tile_pos: Vector2i) -> bool:
+## 收成：成熟的作物 → 獲得物品；回傳品質字串，失敗回傳 ""
+func harvest(tile_pos: Vector2i) -> String:
 	if not _tiles.has(tile_pos):
-		return false
+		return ""
 	var t : Dictionary = _tiles[tile_pos]
 	if t["state"] != "planted":
-		return false
+		return ""
 	var data : Dictionary = _crop_db[t["crop_id"]]
 	if t["growth_stage"] < _total_stages(data):
-		return false   # 還沒成熟
+		return ""   # 還沒成熟
 
 	var quality := _calc_quality(t)
 	harvested.emit(t["crop_id"], quality)
@@ -167,7 +168,7 @@ func harvest(tile_pos: Vector2i) -> bool:
 		else:
 			_tiles[tile_pos] = { "state": "tilled", "watered_today": false }
 			_tile_map.set_cell(LAYER, tile_pos, SOURCE_ID, T_TILLED)
-	return true
+	return quality
 
 
 ## 查詢 tile 狀態（供 Player 決定要做什麼動作）
@@ -221,7 +222,8 @@ func _on_day_changed(_day: int, _season: int, _year: int) -> void:
 			_tile_map.set_cell(LAYER, pos, SOURCE_ID, T_TILLED)   # 隔天恢復乾土外觀
 		else:
 			# 連續 3 天未澆水 → 枯死 (S04-T09)
-			t["dry_days"] = t.get("dry_days", 0) + 1
+			t["dry_days"]     = t.get("dry_days", 0) + 1
+			t["missed_water"] = t.get("missed_water", 0) + 1
 			if t["dry_days"] >= 3:
 				to_kill.append(pos)
 				continue
@@ -256,7 +258,8 @@ func _on_day_changed(_day: int, _season: int, _year: int) -> void:
 func _spawn_crop_visual(tile_pos: Vector2i, crop_id: String, stage: int) -> void:
 	if _crop_nodes.has(tile_pos):
 		_crop_nodes[tile_pos].queue_free()
-	var node := _build_crop_node(crop_id, stage)
+	var hint := _quality_hint(tile_pos)
+	var node := _build_crop_node(crop_id, stage, hint)
 	# 植物根部對齊 tile 中心底部
 	node.position = Vector2(tile_pos.x * 16 + 8, tile_pos.y * 16 + 16)
 	_ysort.add_child(node)
@@ -267,12 +270,11 @@ func _update_crop_visual(tile_pos: Vector2i) -> void:
 	if not _tiles.has(tile_pos):
 		return
 	var t    : Dictionary = _tiles[tile_pos]
-	var data : Dictionary = _crop_db[t["crop_id"]]
 	var stage: int        = t["growth_stage"]
 	_spawn_crop_visual(tile_pos, t["crop_id"], stage)
 
 
-func _build_crop_node(crop_id: String, stage: int) -> Node2D:
+func _build_crop_node(crop_id: String, stage: int, quality_hint: String = "normal") -> Node2D:
 	var data    : Dictionary = _crop_db[crop_id]
 	var total   : int        = _total_stages(data)
 	var pct     : float      = float(stage) / float(max(total, 1))
@@ -306,13 +308,26 @@ func _build_crop_node(crop_id: String, stage: int) -> Node2D:
 	head.position = Vector2(0, -stem_h - head_r * 0.8)
 	node.add_child(head)
 
-	# 成熟閃光（白點）
+	# 成熟品質指示星（顏色依品質）
+	# 普通=白, 優良=金, 精品=紫+額外光暈
 	if mature:
-		var shine   := Polygon2D.new()
-		shine.color  = Color(1, 1, 1, 0.6)
-		shine.polygon = _circle(1.2, 6)
-		shine.position = Vector2(head_r * 0.4, -stem_h - head_r * 1.4)
+		var shine_col : Color
+		match quality_hint:
+			"premium": shine_col = Color(0.85, 0.35, 1.0, 0.90)  # 紫色（精品）
+			"good":    shine_col = Color(1.00, 0.85, 0.20, 0.85)  # 金色（優良）
+			_:         shine_col = Color(1.00, 1.00, 1.00, 0.60)  # 白色（普通）
+		var shine       := Polygon2D.new()
+		shine.color      = shine_col
+		shine.polygon    = _circle(1.4, 6)
+		shine.position   = Vector2(head_r * 0.4, -stem_h - head_r * 1.4)
 		node.add_child(shine)
+		# 精品額外光暈（大圓半透明）
+		if quality_hint == "premium":
+			var glow       := Polygon2D.new()
+			glow.color      = Color(0.85, 0.35, 1.0, 0.25)
+			glow.polygon    = _circle(3.0, 10)
+			glow.position   = shine.position
+			node.add_child(glow)
 
 	return node
 
@@ -386,10 +401,24 @@ func _calc_stage(t: Dictionary, data: Dictionary) -> int:
 
 
 func _calc_quality(t: Dictionary) -> String:
-	# 施肥可提升品質（S04-T04）；完整品質計算見 S04-T11
-	if t.get("fertilized", false):
+	# S04-T11: 三段品質系統
+	# 精品 (premium)  = 施肥 AND 全程澆水
+	# 優良 (good)     = 施肥 OR  全程澆水
+	# 普通 (normal)   = 其他
+	var watered_all : bool = t.get("missed_water", 0) == 0   # 生長期間從未漏水
+	var fertilized  : bool = t.get("fertilized", false)
+	if fertilized and watered_all:
+		return "premium"
+	elif fertilized or watered_all:
 		return "good"
 	return "normal"
+
+
+## 依當前 tile 狀態預覽品質（供視覺提示）
+func _quality_hint(tile_pos: Vector2i) -> String:
+	if not _tiles.has(tile_pos):
+		return "normal"
+	return _calc_quality(_tiles[tile_pos])
 
 
 func _is_farmable(tile_pos: Vector2i) -> bool:

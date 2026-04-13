@@ -34,6 +34,14 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# 報表視窗開啟時鎖定所有輸入
+	var hud : Node = get_tree().get_first_node_in_group("hud")
+	if hud and hud.report_open:
+		velocity = Vector2.ZERO
+		move_and_slide()
+		_update_animation(Vector2.ZERO)
+		return
+
 	var input := Vector2(
 		Input.get_axis("move_left", "move_right"),
 		Input.get_axis("move_up", "move_down")
@@ -95,7 +103,11 @@ func _use_tool() -> void:
 
 	# 成熟作物隨時可收成（不限工具）
 	if farm_grid.is_mature(tile_pos):
-		farm_grid.harvest(tile_pos)
+		var quality : String = farm_grid.harvest(tile_pos)
+		if quality != "":
+			var hud : Node = get_tree().get_first_node_in_group("hud")
+			if hud:
+				hud.show_harvest_notification(quality)
 
 
 ## 回傳玩家面向的 tile 座標

@@ -9,7 +9,8 @@ var _pending : Array[Dictionary] = []
 # 作物 DB（從 FarmGrid 讀取，或直接讀 JSON）
 var _crop_db : Dictionary = {}
 
-signal items_shipped(total_gold: int)
+# lines: Array[Dictionary] — { name, quality_label, count, subtotal }
+signal items_shipped(total_gold: int, lines: Array)
 
 
 func _ready() -> void:
@@ -34,21 +35,41 @@ func _on_day_changed(_day: int, _season: int, _year: int) -> void:
 		return
 
 	var total : int = 0
+	var lines : Array = []
 	for entry in _pending:
-		var base  : int = _get_sell_price(entry["crop_id"])
-		var multi : float = _quality_multiplier(entry["quality"])
-		total += int(base * multi) * entry["count"]
+		var base     : int   = _get_sell_price(entry["crop_id"])
+		var multi    : float = _quality_multiplier(entry["quality"])
+		var subtotal : int   = int(base * multi) * entry["count"]
+		total += subtotal
+		lines.append({
+			"name":          _get_crop_name(entry["crop_id"]),
+			"quality_label": _quality_label(entry["quality"]),
+			"count":         entry["count"],
+			"subtotal":      subtotal,
+		})
 
 	_pending.clear()
 	EconomyManager.add_gold(total)
-	items_shipped.emit(total)
-	print("[ShippingBox] 結算：+%d G" % total)
+	items_shipped.emit(total, lines)
 
 
 ## 玩家進入範圍（自動放入手持作物，簡易版）
 func _on_body_entered(body: Node) -> void:
 	# 實際背包系統做好後再接，這裡先留接口
 	pass
+
+
+func _get_crop_name(crop_id: String) -> String:
+	if _crop_db.has(crop_id):
+		return _crop_db[crop_id].get("name", crop_id)
+	return crop_id
+
+
+func _quality_label(quality: String) -> String:
+	match quality:
+		"premium": return "精品"
+		"good":    return "優良"
+		_:         return "普通"
 
 
 func _get_sell_price(crop_id: String) -> int:
@@ -59,9 +80,9 @@ func _get_sell_price(crop_id: String) -> int:
 
 func _quality_multiplier(quality: String) -> float:
 	match quality:
-		"good":    return 1.5
-		"great":   return 2.0
-		_:         return 1.0   # normal
+		"premium": return 2.0   # 精品
+		"good":    return 1.5   # 優良
+		_:         return 1.0   # 普通 (normal)
 
 
 func _load_crop_db() -> void:
