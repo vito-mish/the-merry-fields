@@ -44,6 +44,7 @@ func _ready() -> void:
 	add_to_group("farm_grid")
 	_load_crop_db()
 	TimeManager.day_changed.connect(_on_day_changed)
+	TimeManager.season_changed.connect(_on_season_changed)
 
 
 # ── 公開 API ─────────────────────────────────────────────────────────────
@@ -105,9 +106,32 @@ func is_fertilized(tile_pos: Vector2i) -> bool:
 	return _tiles[tile_pos].get("fertilized", false)
 
 
+## 回傳所有作物 id 列表（供 player 循環切換用）
+func get_crop_ids() -> Array:
+	return _crop_db.keys()
+
+
+## 回傳完整作物資料表（供 toolbar 顯示名稱用）
+func get_crop_db() -> Dictionary:
+	return _crop_db
+
+
+## 查詢作物是否可在當前季節種植 (S04-T13)
+func can_plant_in_season(crop_id: String) -> bool:
+	if not _crop_db.has(crop_id):
+		return false
+	var data : Dictionary = _crop_db[crop_id]
+	var seasons : Array   = data.get("season", [])
+	var cur_season : String = TimeManager.SEASON_EN[TimeManager.season]
+	return seasons.has(cur_season)
+
+
 ## 播種：TILLED / WATERED → PLANTED
 func plant(tile_pos: Vector2i, crop_id: String) -> bool:
 	if not _crop_db.has(crop_id):
+		return false
+	# S04-T13: 季節限制
+	if not can_plant_in_season(crop_id):
 		return false
 	if not _tiles.has(tile_pos):
 		return false
@@ -179,6 +203,26 @@ func get_tile_state(tile_pos: Vector2i) -> String:
 			return "dirt"
 		return "none"
 	return _tiles[tile_pos]["state"]
+
+
+## 回傳某格作物的生長進度資訊（供 HUD focus 顯示）
+func get_crop_progress(tile_pos: Vector2i) -> Dictionary:
+	if not _tiles.has(tile_pos):
+		return {}
+	var t : Dictionary = _tiles[tile_pos]
+	if t["state"] != "planted":
+		return {}
+	var data  : Dictionary = _crop_db[t["crop_id"]]
+	var total : int        = _total_stages(data)
+	var stage : int        = t["growth_stage"]
+	return {
+		"name":          data.get("name", t["crop_id"]),
+		"stage":         stage,
+		"total":         total,
+		"mature":        stage >= total,
+		"watered_today": t.get("watered_today", false),
+		"fertilized":    t.get("fertilized", false),
+	}
 
 
 func is_mature(tile_pos: Vector2i) -> bool:
@@ -253,6 +297,22 @@ func _on_day_changed(_day: int, _season: int, _year: int) -> void:
 					_tile_map.set_cell(LAYER, pos, SOURCE_ID, T_WATERED)
 
 
+# S04-T13: 季節切換時，清除所有不屬於新季節的作物（枯死）
+func _on_season_changed(new_season: int) -> void:
+	var cur_season : String = TimeManager.SEASON_EN[new_season]
+	var to_kill : Array[Vector2i] = []
+	for pos : Vector2i in _tiles.keys():
+		var t : Dictionary = _tiles[pos]
+		if t["state"] != "planted":
+			continue
+		var data    : Dictionary = _crop_db[t["crop_id"]]
+		var seasons : Array      = data.get("season", [])
+		if not seasons.has(cur_season):
+			to_kill.append(pos)
+	for pos in to_kill:
+		_kill_crop(pos)
+
+
 # ── 視覺 ─────────────────────────────────────────────────────────────────
 
 func _spawn_crop_visual(tile_pos: Vector2i, crop_id: String, stage: int) -> void:
@@ -275,58 +335,293 @@ func _update_crop_visual(tile_pos: Vector2i) -> void:
 
 
 func _build_crop_node(crop_id: String, stage: int, quality_hint: String = "normal") -> Node2D:
-	var data    : Dictionary = _crop_db[crop_id]
-	var total   : int        = _total_stages(data)
-	var pct     : float      = float(stage) / float(max(total, 1))
-	var mature  : bool       = stage >= total
+	var data   : Dictionary = _crop_db[crop_id]
+	var total  : int        = _total_stages(data)
+	var pct    : float      = float(stage) / float(max(total, 1))
+	var mature : bool       = stage >= total
+	var node   := Node2D.new()
+	var shine_pos := Vector2(4.0, -18.0)
 
-	var col_s   := data["color_seedling"] as Array
-	var col_m   := data["color_mature"]   as Array
-	var col     := Color(
-		lerpf(col_s[0], col_m[0], pct),
-		lerpf(col_s[1], col_m[1], pct),
-		lerpf(col_s[2], col_m[2], pct)
-	)
+	# ── 幼苗（pct < 0.2）：統一嫩芽外觀 ──────────────────────────────────
+	if pct < 0.2:
+		var h : float = lerpf(2.0, 5.0, pct / 0.2)
+		var sp := Polygon2D.new()
+		sp.color   = Color(0.30, 0.62, 0.20)
+		sp.polygon = PackedVector2Array([Vector2(-0.5, 0), Vector2(0.5, 0),
+			Vector2(0.5, -h), Vector2(-0.5, -h)])
+		node.add_child(sp)
+		for li in range(2):
+			var lx : float = 3.0 if li == 0 else -3.0
+			var lf := Polygon2D.new()
+			lf.color   = Color(0.35, 0.72, 0.22)
+			lf.polygon = PackedVector2Array([Vector2(0.0, -h * 0.4),
+				Vector2(lx, -h * 0.9), Vector2(lx * 0.4, -h - 1.0)])
+			node.add_child(lf)
+		shine_pos = Vector2(3.0, -h - 3.0)
+	else:
+		# ── 各作物專屬形狀 ────────────────────────────────────────────────
+		match crop_id:
 
-	var node    := Node2D.new()
-	var stem_h  : float = lerpf(3.0, 10.0, pct)
-	var head_r  : float = lerpf(2.0, 5.0,  pct)
+			"turnip":  # 蕪菁：橙黃球根 + 紫頂帽 + 3片上翹葉
+				var br : float = lerpf(2.0, 5.5, pct)
+				var lh : float = lerpf(4.0, 12.0, pct)
+				var bulb := Polygon2D.new()
+				bulb.color   = Color(0.92, 0.80, 0.22)
+				bulb.polygon = _oval(br, br * 0.80, 10)
+				bulb.position = Vector2(0.0, -br * 0.6)
+				node.add_child(bulb)
+				var cap := Polygon2D.new()
+				cap.color   = Color(0.65, 0.18, 0.55)
+				cap.polygon = _oval(br * 0.60, br * 0.40, 8)
+				cap.position = Vector2(0.0, -br * 1.2)
+				node.add_child(cap)
+				for li in range(3):
+					var ang : float = [-0.45, 0.0, 0.45][li]
+					var lf2 := Polygon2D.new()
+					lf2.color   = Color(0.28, 0.68, 0.20)
+					lf2.polygon = PackedVector2Array([Vector2(0.0, -br * 1.4),
+						Vector2(sin(ang) * lh * 0.75, -br * 1.4 - lh * 0.55),
+						Vector2(sin(ang) * lh * 0.35, -br * 1.4 - lh)])
+					node.add_child(lf2)
+				shine_pos = Vector2(4.0, -br * 1.4 - lh - 2.0)
 
-	# 莖
-	var stem    := Polygon2D.new()
-	stem.color  = Color(0.25, 0.55, 0.15)
-	stem.polygon = PackedVector2Array([
-		Vector2(-1, 0), Vector2(1, 0),
-		Vector2(1, -stem_h), Vector2(-1, -stem_h)
-	])
-	node.add_child(stem)
+			"potato":  # 馬鈴薯：矮叢闊葉 + 成熟時白色五瓣花
+				var bh : float = lerpf(4.0, 9.0, pct)
+				var bw : float = lerpf(3.0, 8.0, pct)
+				var pStem := Polygon2D.new()
+				pStem.color   = Color(0.30, 0.58, 0.18)
+				pStem.polygon = PackedVector2Array([Vector2(-1.0, 0), Vector2(1.0, 0),
+					Vector2(0.8, -bh), Vector2(-0.8, -bh)])
+				node.add_child(pStem)
+				for li in range(3):
+					var lx2 : float = [-bw, 0.0, bw][li]
+					var ly2 : float = [-bh * 0.35, -bh, -bh * 0.35][li]
+					var lf3 := Polygon2D.new()
+					lf3.color   = Color(0.32, 0.65, 0.22)
+					lf3.polygon = _oval(bw * 0.55, bh * 0.38, 7)
+					lf3.position = Vector2(lx2 * 0.5, ly2)
+					node.add_child(lf3)
+				if mature:
+					for fi in range(5):
+						var fa : float = fi * TAU / 5.0
+						var pt := Polygon2D.new()
+						pt.color    = Color(0.95, 0.95, 0.90)
+						pt.polygon  = _circle(1.6, 5)
+						pt.position = Vector2(cos(fa) * 2.8, -bh - 1.5 + sin(fa) * 2.8)
+						node.add_child(pt)
+					var fc := Polygon2D.new()
+					fc.color   = Color(0.98, 0.88, 0.20)
+					fc.polygon = _circle(1.2, 6)
+					fc.position = Vector2(0.0, -bh - 1.5)
+					node.add_child(fc)
+				shine_pos = Vector2(4.0, -bh - 6.0)
 
-	# 頭部（葉/果）
-	var head    := Polygon2D.new()
-	head.color  = col
-	head.polygon = _circle(head_r, 8)
-	head.position = Vector2(0, -stem_h - head_r * 0.8)
-	node.add_child(head)
+			"strawberry":  # 草莓：低矮圓葉 + 紅色心形果
+				var lh2 : float = lerpf(3.0, 7.0, pct)
+				for li in range(3):
+					var ang2 : float = (li - 1) * 0.55
+					var lf4 := Polygon2D.new()
+					lf4.color   = Color(0.28, 0.70, 0.20)
+					lf4.polygon = _oval(lh2 * 0.52, lh2 * 0.38, 6)
+					lf4.position = Vector2(sin(ang2) * lh2 * 0.7, -lh2 * 0.45)
+					node.add_child(lf4)
+				if mature:
+					for bi in range(2):
+						var bx : float = [-3.0, 3.0][bi]
+						var bry := Polygon2D.new()
+						bry.color   = Color(0.92, 0.15, 0.22)
+						bry.polygon = PackedVector2Array([Vector2(-2.0, -1.0), Vector2(2.0, -1.0),
+							Vector2(2.5, 0.5), Vector2(0.0, 3.5), Vector2(-2.5, 0.5)])
+						bry.position = Vector2(bx, -lh2 * 0.15)
+						node.add_child(bry)
+						var bc := Polygon2D.new()
+						bc.color   = Color(0.28, 0.70, 0.20)
+						bc.polygon = _circle(1.3, 5)
+						bc.position = Vector2(bx, -lh2 * 0.15 - 2.0)
+						node.add_child(bc)
+				shine_pos = Vector2(4.0, -lh2 - 3.0)
 
-	# 成熟品質指示星（顏色依品質）
-	# 普通=白, 優良=金, 精品=紫+額外光暈
+			"tomato":  # 番茄：高藤蔓 + 2顆圓形紅果
+				var vh : float = lerpf(6.0, 16.0, pct)
+				var vStem := Polygon2D.new()
+				vStem.color   = Color(0.30, 0.60, 0.20)
+				vStem.polygon = PackedVector2Array([Vector2(-1.0, 0), Vector2(1.0, 0),
+					Vector2(0.6, -vh), Vector2(-0.6, -vh)])
+				node.add_child(vStem)
+				var nl : int = clampi(int(pct * 4) + 1, 1, 3)
+				for li in range(nl):
+					var lh3 : float = vh * (0.28 + li * 0.30)
+					var lx3 : float = 4.5 if li % 2 == 0 else -4.5
+					var lf5 := Polygon2D.new()
+					lf5.color   = Color(0.32, 0.68, 0.22)
+					lf5.polygon = PackedVector2Array([Vector2(0.0, -lh3),
+						Vector2(lx3, -lh3 - 3.5), Vector2(lx3 * 0.3, -lh3 - 5.5)])
+					node.add_child(lf5)
+				if mature:
+					for ti in range(2):
+						var tx : float = [-3.5, 3.5][ti]
+						var ty2 : float = [-vh * 0.38, -vh * 0.62][ti]
+						var tom := Polygon2D.new()
+						tom.color   = Color(0.92, 0.20, 0.12)
+						tom.polygon = _circle(3.8, 10)
+						tom.position = Vector2(tx, ty2)
+						node.add_child(tom)
+						var cal := Polygon2D.new()
+						cal.color   = Color(0.28, 0.65, 0.20)
+						cal.polygon = _circle(1.5, 5)
+						cal.position = Vector2(tx, ty2 - 3.5)
+						node.add_child(cal)
+				shine_pos = Vector2(4.5, -vh - 2.0)
+
+			"corn":  # 玉米：最高莖桿 + 交叉寬葉 + 黃色玉米棒
+				var sh : float = lerpf(8.0, 20.0, pct)
+				var stk := Polygon2D.new()
+				stk.color   = Color(0.45, 0.68, 0.22)
+				stk.polygon = PackedVector2Array([Vector2(-1.5, 0), Vector2(1.5, 0),
+					Vector2(1.0, -sh), Vector2(-1.0, -sh)])
+				node.add_child(stk)
+				var nl2 : int = clampi(int(pct * 3) + 1, 1, 3)
+				for li in range(nl2):
+					var lh4 : float = sh * (0.30 + li * 0.22)
+					var lx4 : float = 8.0 if li % 2 == 0 else -8.0
+					var lf6 := Polygon2D.new()
+					lf6.color   = Color(0.38, 0.72, 0.22)
+					lf6.polygon = PackedVector2Array([Vector2(0.0, -lh4 + 2),
+						Vector2(lx4, -lh4 - 2), Vector2(lx4 * 0.6, -lh4 - 6),
+						Vector2(0.0, -lh4 - 4)])
+					node.add_child(lf6)
+				if mature:
+					var cob := Polygon2D.new()
+					cob.color   = Color(0.98, 0.82, 0.18)
+					cob.polygon = PackedVector2Array([Vector2(-2.5, -sh * 0.38),
+						Vector2(2.5, -sh * 0.38), Vector2(2.5, -sh * 0.65),
+						Vector2(-2.5, -sh * 0.65)])
+					node.add_child(cob)
+					var slk := Polygon2D.new()
+					slk.color   = Color(0.85, 0.42, 0.12)
+					slk.polygon = PackedVector2Array([Vector2(-1.5, -sh * 0.65),
+						Vector2(1.5, -sh * 0.65), Vector2(2.0, -sh * 0.80),
+						Vector2(-2.0, -sh * 0.80)])
+					node.add_child(slk)
+				shine_pos = Vector2(4.0, -sh - 2.0)
+
+			"pumpkin":  # 南瓜：寬扁多瓣橙色大瓜 + 大葉 + 蒂
+				var pw : float = lerpf(3.0, 9.0, pct)
+				var ph : float = lerpf(2.5, 6.0, pct)
+				var gl := Polygon2D.new()
+				gl.color   = Color(0.32, 0.65, 0.20)
+				gl.polygon = _oval(pw * 1.2, ph * 0.65, 8)
+				gl.position = Vector2(pw * 0.55, -ph * 0.5)
+				node.add_child(gl)
+				var nseg : int = 3 if not mature else 5
+				for si in range(nseg):
+					var sx : float = lerpf(-pw * 0.8, pw * 0.8, float(si) / max(nseg - 1, 1))
+					var sg := Polygon2D.new()
+					sg.color   = Color(0.92, 0.52, 0.10) if si % 2 == 0 else Color(0.88, 0.44, 0.08)
+					sg.polygon = _oval(pw * 0.52, ph, 8)
+					sg.position = Vector2(sx, -ph)
+					node.add_child(sg)
+				var pdt := Polygon2D.new()
+				pdt.color   = Color(0.25, 0.50, 0.12)
+				pdt.polygon = PackedVector2Array([Vector2(-1.0, -ph * 2.0 + 1.0),
+					Vector2(1.0, -ph * 2.0 + 1.0), Vector2(0.5, -ph * 2.0 - 3.5),
+					Vector2(-0.5, -ph * 2.0 - 3.5)])
+				node.add_child(pdt)
+				shine_pos = Vector2(4.0, -ph * 2.0 - 5.0)
+
+			"eggplant":  # 茄子：中高莖 + 側葉 + 深紫長橢圓果
+				var esh : float = lerpf(5.0, 13.0, pct)
+				var efh : float = lerpf(2.0,  7.0, pct)
+				var eSt := Polygon2D.new()
+				eSt.color   = Color(0.30, 0.55, 0.18)
+				eSt.polygon = PackedVector2Array([Vector2(-1.0, 0), Vector2(1.0, 0),
+					Vector2(0.5, -esh), Vector2(-0.5, -esh)])
+				node.add_child(eSt)
+				var eLf := Polygon2D.new()
+				eLf.color   = Color(0.32, 0.62, 0.22)
+				eLf.polygon = _oval(esh * 0.40, esh * 0.24, 6)
+				eLf.position = Vector2(3.5, -esh * 0.45)
+				node.add_child(eLf)
+				if pct > 0.30:
+					var frt := Polygon2D.new()
+					frt.color   = Color(0.38, 0.08, 0.62)
+					frt.polygon = _oval(efh * 0.45, efh, 10)
+					frt.position = Vector2(0.0, -esh * 0.45)
+					node.add_child(frt)
+					var fcp := Polygon2D.new()
+					fcp.color   = Color(0.28, 0.62, 0.20)
+					fcp.polygon = _circle(1.6, 5)
+					fcp.position = Vector2(0.0, -esh * 0.45 - efh)
+					node.add_child(fcp)
+				shine_pos = Vector2(4.0, -esh - 2.0)
+
+			"cabbage":  # 白菜：同心橢圓疊層的圓頭菜球
+				var cr : float = lerpf(2.5, 7.5, pct)
+				var nl3 : int  = clampi(int(pct * 5) + 1, 1, 5)
+				for li in range(nl3, 0, -1):
+					var lr : float = cr * float(li) / nl3
+					var tf : float = float(li) / nl3
+					var lc := Polygon2D.new()
+					lc.color   = Color(0.58 + tf * 0.22, 0.82 + tf * 0.12, 0.40 + tf * 0.25)
+					lc.polygon = _oval(lr, lr * 0.72, 10)
+					lc.position = Vector2(0.0, -cr - li * 0.5)
+					node.add_child(lc)
+				shine_pos = Vector2(4.0, -cr * 2.0 - 3.0)
+
+			"daikon":  # 白蘿蔔：白色梯形根莖 + 羽狀蘿蔔纓
+				var rh : float = lerpf(4.0, 12.0, pct)
+				var rw : float = lerpf(1.5,  3.5, pct)
+				var rt := Polygon2D.new()
+				rt.color   = Color(0.94, 0.94, 0.90)
+				rt.polygon = PackedVector2Array([Vector2(-rw, 0.0), Vector2(rw, 0.0),
+					Vector2(rw * 0.45, -rh), Vector2(-rw * 0.45, -rh)])
+				node.add_child(rt)
+				var nl4 : int = clampi(int(pct * 4) + 2, 2, 5)
+				for li in range(nl4):
+					var ang3 : float = lerpf(-0.65, 0.65, float(li) / max(nl4 - 1, 1))
+					var ll   : float = lerpf(4.0, 10.0, pct)
+					var dlf  := Polygon2D.new()
+					dlf.color   = Color(0.28, 0.70, 0.20)
+					dlf.polygon = PackedVector2Array([Vector2(0.0, -rh),
+						Vector2(sin(ang3) * ll * 0.75, -rh - ll * 0.55),
+						Vector2(sin(ang3) * ll * 0.38, -rh - ll)])
+					node.add_child(dlf)
+				shine_pos = Vector2(4.0, -rh - 12.0)
+
+			_:  # 後備通用形狀
+				var cm2 : Array = data.get("color_mature", [0.35, 0.78, 0.32])
+				var gc   := Color(cm2[0], cm2[1], cm2[2])
+				var gsh  : float = lerpf(3.0, 10.0, pct)
+				var ghr  : float = lerpf(2.0,  5.0, pct)
+				var gst  := Polygon2D.new()
+				gst.color   = Color(0.25, 0.55, 0.15)
+				gst.polygon = PackedVector2Array([Vector2(-1, 0), Vector2(1, 0),
+					Vector2(1, -gsh), Vector2(-1, -gsh)])
+				node.add_child(gst)
+				var ghd  := Polygon2D.new()
+				ghd.color   = gc
+				ghd.polygon = _circle(ghr, 8)
+				ghd.position = Vector2(0.0, -gsh - ghr * 0.8)
+				node.add_child(ghd)
+				shine_pos = Vector2(4.0, -gsh - ghr * 1.8 - 2.0)
+
+	# ── 成熟品質光暈 ──────────────────────────────────────────────────────
 	if mature:
 		var shine_col : Color
 		match quality_hint:
-			"premium": shine_col = Color(0.85, 0.35, 1.0, 0.90)  # 紫色（精品）
-			"good":    shine_col = Color(1.00, 0.85, 0.20, 0.85)  # 金色（優良）
-			_:         shine_col = Color(1.00, 1.00, 1.00, 0.60)  # 白色（普通）
-		var shine       := Polygon2D.new()
-		shine.color      = shine_col
-		shine.polygon    = _circle(1.4, 6)
-		shine.position   = Vector2(head_r * 0.4, -stem_h - head_r * 1.4)
+			"premium": shine_col = Color(0.85, 0.35, 1.0, 0.90)
+			"good":    shine_col = Color(1.00, 0.85, 0.20, 0.85)
+			_:         shine_col = Color(1.00, 1.00, 1.00, 0.60)
+		var shine := Polygon2D.new()
+		shine.color   = shine_col
+		shine.polygon = _circle(1.4, 6)
+		shine.position = shine_pos
 		node.add_child(shine)
-		# 精品額外光暈（大圓半透明）
 		if quality_hint == "premium":
-			var glow       := Polygon2D.new()
-			glow.color      = Color(0.85, 0.35, 1.0, 0.25)
-			glow.polygon    = _circle(3.0, 10)
-			glow.position   = shine.position
+			var glow := Polygon2D.new()
+			glow.color   = Color(0.85, 0.35, 1.0, 0.25)
+			glow.polygon = _circle(3.0, 10)
+			glow.position = shine_pos
 			node.add_child(glow)
 
 	return node
@@ -337,6 +632,14 @@ func _circle(r: float, pts: int) -> PackedVector2Array:
 	for i in range(pts):
 		var a := i * TAU / pts
 		arr.append(Vector2(cos(a) * r, sin(a) * r))
+	return arr
+
+
+func _oval(rx: float, ry: float, pts: int) -> PackedVector2Array:
+	var arr := PackedVector2Array()
+	for i in range(pts):
+		var a := i * TAU / pts
+		arr.append(Vector2(cos(a) * rx, sin(a) * ry))
 	return arr
 
 

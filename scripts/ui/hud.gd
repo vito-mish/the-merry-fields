@@ -7,6 +7,12 @@ var _notify_label : Label
 var _notify_timer : float = 0.0
 var _hint_label   : Label
 
+# ── 作物生長資訊面板 ─────────────────────────────────────────────────────
+var _crop_info_root  : PanelContainer = null
+var _crop_info_name  : Label
+var _crop_info_bar   : Label
+var _crop_info_stat  : Label
+
 # ── 工具列常數 ────────────────────────────────────────────────────────────
 const TOOL_ICONS : Dictionary = {
 	"hoe":          "鋤",
@@ -43,6 +49,7 @@ func _ready() -> void:
 	_on_gold_changed(EconomyManager.gold)
 	_on_weather_changed(WeatherManager.current_weather)
 	_build_overlay_labels()
+	_build_crop_info_panel()
 	# 出貨箱結算報表（延遲一幀確保 shipping_box 已加入場景）
 	call_deferred("_connect_shipping_box")
 
@@ -128,9 +135,88 @@ func _on_late_night(h: int) -> void:
 		3: show_notification(tr("NOTIFY_03"))
 
 
-func show_notification(text: String) -> void:
+func _build_crop_info_panel() -> void:
+	_crop_info_root = PanelContainer.new()
+	_crop_info_root.anchor_left   = 0.5
+	_crop_info_root.anchor_right  = 0.5
+	_crop_info_root.anchor_top    = 1.0
+	_crop_info_root.anchor_bottom = 1.0
+	_crop_info_root.offset_left   = -55.0
+	_crop_info_root.offset_right  =  55.0
+	_crop_info_root.offset_top    = -68.0
+	_crop_info_root.offset_bottom = -28.0
+	var sty := StyleBoxFlat.new()
+	sty.bg_color    = Color(0.04, 0.08, 0.04, 0.88)
+	sty.border_color = Color(0.40, 0.70, 0.28, 0.90)
+	for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
+		sty.set_border_width(side, 1)
+	sty.set_corner_radius_all(2)
+	sty.content_margin_left   = 4.0
+	sty.content_margin_right  = 4.0
+	sty.content_margin_top    = 2.0
+	sty.content_margin_bottom = 2.0
+	_crop_info_root.add_theme_stylebox_override("panel", sty)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 1)
+	_crop_info_root.add_child(vb)
+	_crop_info_name = Label.new()
+	_crop_info_name.add_theme_font_size_override("font_size", 7)
+	_crop_info_name.modulate = Color(0.90, 1.00, 0.65)
+	vb.add_child(_crop_info_name)
+	_crop_info_bar = Label.new()
+	_crop_info_bar.add_theme_font_size_override("font_size", 7)
+	_crop_info_bar.modulate = Color(0.75, 0.92, 0.50)
+	vb.add_child(_crop_info_bar)
+	_crop_info_stat = Label.new()
+	_crop_info_stat.add_theme_font_size_override("font_size", 6)
+	_crop_info_stat.modulate = Color(0.65, 0.82, 0.90)
+	vb.add_child(_crop_info_stat)
+	_crop_info_root.hide()
+	add_child(_crop_info_root)
+
+
+func _update_crop_info() -> void:
+	if _crop_info_root == null:
+		return
+	var player : Node = get_tree().get_first_node_in_group("player")
+	if not player:
+		_crop_info_root.hide()
+		return
+	var farm_grid : Node = get_tree().get_first_node_in_group("farm_grid")
+	if not farm_grid:
+		_crop_info_root.hide()
+		return
+	var info : Dictionary = farm_grid.get_crop_progress(player._facing_tile_pos)
+	if info.is_empty():
+		_crop_info_root.hide()
+		return
+	# 名稱列
+	if info["mature"]:
+		_crop_info_name.text = info["name"] + "  ★ 可收成"
+	else:
+		var days_left : int = info["total"] - info["stage"]
+		_crop_info_name.text = info["name"] + "  還需 " + str(days_left) + " 天"
+	# 進度條（12 格）
+	var filled : int = int(float(info["stage"]) / float(max(info["total"], 1)) * 12.0)
+	var bar_str := "["
+	for i in range(12):
+		bar_str += "=" if i < filled else "."
+	bar_str += "]"
+	_crop_info_bar.text = bar_str
+	# 狀態列
+	var w_str : String = "澆水 O" if info["watered_today"] else "澆水 X"
+	var f_str : String = "  施肥 O" if info["fertilized"]    else "  施肥 X"
+	_crop_info_stat.text = w_str + f_str
+	_crop_info_root.show()
+
+
+func refresh_toolbar() -> void:
+	_toolbar.queue_redraw()
+
+
+func show_notification(text: String, color: Color = Color(1.0, 1.0, 0.5, 1.0)) -> void:
 	_notify_label.text = text
-	_notify_label.modulate = Color(1.0, 1.0, 0.5, 1.0)
+	_notify_label.modulate = color
 	_notify_label.show()
 	_notify_timer = NOTIFY_DURATION
 
@@ -251,6 +337,7 @@ func _build_report_panel() -> void:
 func _process(delta: float) -> void:
 	_refresh_stamina()
 	_toolbar.queue_redraw()
+	_update_crop_info()
 	if _notify_timer > 0.0:
 		_notify_timer -= delta
 		if _notify_timer <= 0.0:

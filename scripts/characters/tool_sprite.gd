@@ -19,10 +19,32 @@ const TOOL_COLOR : Dictionary = {
 }
 
 var _player : Node = null
+var _crop_db : Dictionary = {}
 
 
 func _ready() -> void:
 	_player = get_parent()
+	# 等場景就緒後再讀 crop_db
+	call_deferred("_load_crop_db")
+
+
+func _load_crop_db() -> void:
+	var farm_grid : Node = get_tree().get_first_node_in_group("farm_grid")
+	if farm_grid:
+		_crop_db = farm_grid.get_crop_db()
+
+
+func _get_seed_color() -> Color:
+	if not _player:
+		return Color(0.35, 0.80, 0.30)
+	# 若 crop_db 未載入則嘗試再拿一次
+	if _crop_db.is_empty():
+		_load_crop_db()
+	var crop_id : String = _player.seed_crop_id
+	if _crop_db.has(crop_id):
+		var cm : Array = _crop_db[crop_id].get("color_mature", [0.35, 0.80, 0.30])
+		return Color(cm[0], cm[1], cm[2])
+	return Color(0.35, 0.80, 0.30)
 
 
 func _process(_delta: float) -> void:
@@ -52,6 +74,8 @@ func _draw() -> void:
 			draw_line(Vector2(2, -3), Vector2(5, -5), col.lightened(0.2), 1.0)
 
 		"seeds":
-			# 種子袋：小圓點
-			draw_circle(Vector2(0, -3), 3.0, col)
-			draw_circle(Vector2(0, -3), 2.0, col.lightened(0.3))
+			# 種子袋：用作物成熟色畫種子圖示
+			var seed_col := _get_seed_color()
+			draw_line(Vector2(0, -1), Vector2(0, -4), Color(0.25, 0.55, 0.15), 1.5)
+			draw_circle(Vector2(0, -6), 3.0, seed_col)
+			draw_circle(Vector2(0, -6), 1.8, seed_col.lightened(0.40))

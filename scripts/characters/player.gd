@@ -59,6 +59,10 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("tool_next"):
 		tool_index = (tool_index + 1) % TOOLS.size()
 
+	# 種子切換（Tab 或手把 LT）：只在持種子時有效
+	if Input.is_action_just_pressed("cycle_seed") and current_tool == "seeds":
+		_cycle_seed()
+
 	# 互動
 	_action_cooldown = maxf(0.0, _action_cooldown - delta)
 	if Input.is_action_pressed("action") and _action_cooldown <= 0.0:
@@ -91,7 +95,12 @@ func _use_tool() -> void:
 		"seeds":
 			var state : String = farm_grid.get_tile_state(tile_pos)
 			if state == "tilled" or state == "watered":
-				if consume_stamina(cost):
+				# S04-T13: 季節限制
+				if not farm_grid.can_plant_in_season(seed_crop_id):
+					var hud : Node = get_tree().get_first_node_in_group("hud")
+					if hud:
+						hud.show_notification(tr("NOTIF_WRONG_SEASON"), Color(0.95, 0.55, 0.15))
+				elif consume_stamina(cost):
 					farm_grid.plant(tile_pos, seed_crop_id)
 
 		"fertilizer":
@@ -123,6 +132,30 @@ func _facing_tile() -> Vector2i:
 		int(floor(position.y / 16.0))
 	)
 	return foot + offsets[facing]
+
+
+## 循環切換到下一個當前季節可種的作物
+func _cycle_seed() -> void:
+	var farm_grid := _get_farm_grid()
+	if farm_grid == null:
+		return
+	# 取得所有作物 id（從 farm_grid 的 crop_db）
+	var all_ids : Array = farm_grid.get_crop_ids()
+	# 篩出當前季節可種的
+	var available : Array[String] = []
+	for id : String in all_ids:
+		if farm_grid.can_plant_in_season(id):
+			available.append(id)
+	if available.is_empty():
+		return
+	var idx : int = available.find(seed_crop_id)
+	idx = (idx + 1) % available.size()
+	seed_crop_id = available[idx]
+	# 通知 HUD 更新工具列
+	queue_redraw()
+	var hud : Node = get_tree().get_first_node_in_group("hud")
+	if hud:
+		hud.refresh_toolbar()
 
 
 func _get_farm_grid() -> Node:

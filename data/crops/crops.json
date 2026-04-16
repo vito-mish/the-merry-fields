@@ -21,6 +21,18 @@
     "color_seedling": [0.35, 0.65, 0.25],
     "color_mature":   [0.72, 0.58, 0.25]
   },
+  "strawberry": {
+    "name": "草莓",
+    "name_en": "Strawberry",
+    "season": ["spring"],
+    "grow_days": 8,
+    "multi_harvest": true,
+    "regrow_days": 3,
+    "sell_price": 120,
+    "stamina_cost": 2,
+    "color_seedling": [0.35, 0.65, 0.25],
+    "color_mature":   [0.95, 0.20, 0.30]
+  },
   "tomato": {
     "name": "番茄",
     "name_en": "Tomato",
@@ -33,6 +45,18 @@
     "color_seedling": [0.35, 0.65, 0.25],
     "color_mature":   [0.90, 0.25, 0.15]
   },
+  "corn": {
+    "name": "玉米",
+    "name_en": "Corn",
+    "season": ["summer"],
+    "grow_days": 14,
+    "multi_harvest": true,
+    "regrow_days": 4,
+    "sell_price": 90,
+    "stamina_cost": 2,
+    "color_seedling": [0.35, 0.65, 0.25],
+    "color_mature":   [0.98, 0.85, 0.12]
+  },
   "pumpkin": {
     "name": "南瓜",
     "name_en": "Pumpkin",
@@ -43,5 +67,39 @@
     "stamina_cost": 3,
     "color_seedling": [0.35, 0.65, 0.25],
     "color_mature":   [0.92, 0.55, 0.12]
+  },
+  "eggplant": {
+    "name": "茄子",
+    "name_en": "Eggplant",
+    "season": ["autumn"],
+    "grow_days": 10,
+    "multi_harvest": true,
+    "regrow_days": 5,
+    "sell_price": 80,
+    "stamina_cost": 2,
+    "color_seedling": [0.35, 0.65, 0.25],
+    "color_mature":   [0.42, 0.12, 0.65]
+  },
+  "cabbage": {
+    "name": "白菜",
+    "name_en": "Cabbage",
+    "season": ["winter"],
+    "grow_days": 9,
+    "multi_harvest": false,
+    "sell_price": 70,
+    "stamina_cost": 2,
+    "color_seedling": [0.35, 0.65, 0.25],
+    "color_mature":   [0.78, 0.92, 0.60]
+  },
+  "daikon": {
+    "name": "白蘿蔔",
+    "name_en": "Daikon",
+    "season": ["winter"],
+    "grow_days": 7,
+    "multi_harvest": false,
+    "sell_price": 65,
+    "stamina_cost": 2,
+    "color_seedling": [0.35, 0.65, 0.25],
+    "color_mature":   [0.95, 0.95, 0.92]
   }
 }
