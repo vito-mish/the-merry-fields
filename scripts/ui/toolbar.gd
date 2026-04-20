@@ -63,6 +63,7 @@ func _draw() -> void:
 			var crop_col := _get_seed_color(player)
 			var cx : float = x + SLOT_W / 2.0
 			var icon_y : float = y + SLOT_H * 0.30
+			var seed_qty : int = InventoryManager.get_quantity("seed_" + player.seed_crop_id)
 			if active:
 				# 選中：較大圖示（莖 + 果實圓）
 				draw_line(Vector2(cx, icon_y + 2), Vector2(cx, icon_y - 1),
@@ -72,15 +73,31 @@ func _draw() -> void:
 				# 作物名稱
 				var crop_name := _get_seed_name(player)
 				var cn_w : float = font.get_string_size(crop_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 5).x
-				draw_string(font, Vector2(x + (SLOT_W - cn_w) / 2.0, y + SLOT_H - 3),
+				draw_string(font, Vector2(x + (SLOT_W - cn_w) / 2.0, y + SLOT_H - 10),
 					crop_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 5, Color(0.95, 1.0, 0.70, 1.0))
+				# 數量
+				var qty_str : String = "x" + str(seed_qty)
+				var qw : float = font.get_string_size(qty_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 5).x
+				var qty_col : Color = Color(1.0, 0.95, 0.40, 1.0) if seed_qty > 0 else Color(0.65, 0.40, 0.40, 1.0)
+				draw_string(font, Vector2(x + (SLOT_W - qw) / 2.0, y + SLOT_H - 3),
+					qty_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 5, qty_col)
 				draw_string(font, Vector2(x + 1, y + SLOT_H - 1), "Tab",
 					HORIZONTAL_ALIGNMENT_LEFT, -1, 4, Color(0.5, 0.5, 0.5, 0.8))
 			else:
-				# 未選中：小點
+				# 未選中：小點 + 作物名稱（淡色）
 				draw_line(Vector2(cx, icon_y + 1), Vector2(cx, icon_y - 1),
 					Color(0.25, 0.55, 0.15, 0.8), 1.0)
 				draw_circle(Vector2(cx, icon_y - 2), 2.5, crop_col.darkened(0.2))
+				var crop_name2 := _get_seed_name(player)
+				var cn_w2 : float = font.get_string_size(crop_name2, HORIZONTAL_ALIGNMENT_LEFT, -1, 5).x
+				draw_string(font, Vector2(x + (SLOT_W - cn_w2) / 2.0, y + SLOT_H - 10),
+					crop_name2, HORIZONTAL_ALIGNMENT_LEFT, -1, 5, Color(0.75, 0.85, 0.60, 0.85))
+				# 數量（淡色）
+				var qty_str2 : String = "x" + str(seed_qty)
+				var qw2 : float = font.get_string_size(qty_str2, HORIZONTAL_ALIGNMENT_LEFT, -1, 5).x
+				var qty_col2 : Color = Color(0.85, 0.80, 0.35, 0.85) if seed_qty > 0 else Color(0.55, 0.35, 0.35, 0.85)
+				draw_string(font, Vector2(x + (SLOT_W - qw2) / 2.0, y + SLOT_H - 3),
+					qty_str2, HORIZONTAL_ALIGNMENT_LEFT, -1, 5, qty_col2)
 
 		# 快捷鍵提示（Q ← → E）
 		if i == 0:

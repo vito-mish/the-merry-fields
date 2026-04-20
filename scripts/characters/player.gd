@@ -34,12 +34,17 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	# 報表視窗開啟時鎖定所有輸入
 	var hud : Node = get_tree().get_first_node_in_group("hud")
-	if hud and hud.report_open:
+
+	# 背包 / 報表開啟時鎖定移動與動作
+	if hud and (hud.report_open or hud.inventory_open):
 		velocity = Vector2.ZERO
 		move_and_slide()
 		_update_animation(Vector2.ZERO)
+		# 仍允許開關背包
+		if Input.is_action_just_pressed("ui_inventory"):
+			if hud:
+				hud.toggle_inventory()
 		return
 
 	var input := Vector2(
@@ -52,6 +57,12 @@ func _physics_process(delta: float) -> void:
 	_update_facing(input)
 	_update_animation(input)
 	_facing_tile_pos = _facing_tile()
+
+	# 開關背包（I 鍵 / 手把 Y）
+	if Input.is_action_just_pressed("ui_inventory"):
+		if hud:
+			hud.toggle_inventory()
+		return
 
 	# 工具切換（Q / E 或 LB / RB）
 	if Input.is_action_just_pressed("tool_prev"):
@@ -95,13 +106,19 @@ func _use_tool() -> void:
 		"seeds":
 			var state : String = farm_grid.get_tile_state(tile_pos)
 			if state == "tilled" or state == "watered":
+				var hud_ref : Node = get_tree().get_first_node_in_group("hud")
 				# S04-T13: 季節限制
 				if not farm_grid.can_plant_in_season(seed_crop_id):
-					var hud : Node = get_tree().get_first_node_in_group("hud")
-					if hud:
-						hud.show_notification(tr("NOTIF_WRONG_SEASON"), Color(0.95, 0.55, 0.15))
-				elif consume_stamina(cost):
-					farm_grid.plant(tile_pos, seed_crop_id)
+					if hud_ref:
+						hud_ref.show_notification(tr("NOTIF_WRONG_SEASON"), Color(0.95, 0.55, 0.15))
+				else:
+					var sid : String = InventoryManager.seed_id_for_crop(seed_crop_id)
+					if not InventoryManager.has_item(sid):
+						if hud_ref:
+							hud_ref.show_notification("種子不足！", Color(1.0, 0.45, 0.15))
+					elif consume_stamina(cost):
+						if farm_grid.plant(tile_pos, seed_crop_id):
+							InventoryManager.remove_item(sid)
 
 		"fertilizer":
 			var state : String = farm_grid.get_tile_state(tile_pos)
@@ -141,10 +158,10 @@ func _cycle_seed() -> void:
 		return
 	# 取得所有作物 id（從 farm_grid 的 crop_db）
 	var all_ids : Array = farm_grid.get_crop_ids()
-	# 篩出當前季節可種的
+	# 篩出當前季節可種且背包有種子的
 	var available : Array[String] = []
 	for id : String in all_ids:
-		if farm_grid.can_plant_in_season(id):
+		if farm_grid.can_plant_in_season(id) and InventoryManager.has_item(InventoryManager.seed_id_for_crop(id)):
 			available.append(id)
 	if available.is_empty():
 		return

@@ -13,6 +13,10 @@ var _crop_info_name  : Label
 var _crop_info_bar   : Label
 var _crop_info_stat  : Label
 
+# ── 背包 UI ──────────────────────────────────────────────────────────────
+var _inventory_ui    : Control = null
+var inventory_open   : bool    = false
+
 # ── 工具列常數 ────────────────────────────────────────────────────────────
 const TOOL_ICONS : Dictionary = {
 	"hoe":          "鋤",
@@ -50,6 +54,7 @@ func _ready() -> void:
 	_on_weather_changed(WeatherManager.current_weather)
 	_build_overlay_labels()
 	_build_crop_info_panel()
+	_build_inventory_ui()
 	# 出貨箱結算報表（延遲一幀確保 shipping_box 已加入場景）
 	call_deferred("_connect_shipping_box")
 
@@ -208,6 +213,41 @@ func _update_crop_info() -> void:
 	var f_str : String = "  施肥 O" if info["fertilized"]    else "  施肥 X"
 	_crop_info_stat.text = w_str + f_str
 	_crop_info_root.show()
+
+
+func _build_inventory_ui() -> void:
+	var script : GDScript = load("res://scripts/ui/inventory_ui.gd")
+	_inventory_ui = script.new()
+	_inventory_ui.seed_selected.connect(_on_inventory_seed_selected)
+	add_child(_inventory_ui)
+
+
+func _on_inventory_seed_selected(crop_id: String) -> void:
+	var player : Node = get_tree().get_first_node_in_group("player")
+	if player:
+		player.seed_crop_id = crop_id
+		_toolbar.queue_redraw()
+
+
+func toggle_inventory() -> void:
+	if _inventory_ui == null:
+		return
+	if inventory_open:
+		_close_inventory()
+	else:
+		_open_inventory()
+
+
+func _open_inventory() -> void:
+	var player : Node = get_tree().get_first_node_in_group("player")
+	var crop_id : String = player.seed_crop_id if player else "turnip"
+	_inventory_ui.open_inventory(crop_id)
+	inventory_open = true
+
+
+func _close_inventory() -> void:
+	_inventory_ui.close_inventory()
+	inventory_open = false
 
 
 func refresh_toolbar() -> void:
