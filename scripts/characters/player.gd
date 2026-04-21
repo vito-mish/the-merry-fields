@@ -31,6 +31,13 @@ func _ready() -> void:
 	add_to_group("player")
 	TimeManager.late_night.connect(_on_late_night)
 	TimeManager.forced_sleep.connect(_on_forced_sleep)
+	# S12: 讀檔後還原玩家狀態
+	var saved : Dictionary = SaveManager.pop_pending_player()
+	if not saved.is_empty():
+		position      = Vector2(saved.get("x", position.x), saved.get("y", position.y))
+		stamina       = saved.get("stamina", stamina)
+		tool_index    = saved.get("tool_index", tool_index)
+		seed_crop_id  = saved.get("seed_crop_id", seed_crop_id)
 
 
 func _physics_process(delta: float) -> void:
@@ -237,6 +244,7 @@ func _do_sleep(fainted: bool) -> void:
 	TransitionManager.sleep_transition(func() -> void:
 		stamina = wake_stamina
 		TimeManager.advance_to_next_day()
+		SaveManager.save()   # S12-T02: 睡覺自動存檔
 	)
 
 

@@ -45,6 +45,7 @@ func _ready() -> void:
 	_load_crop_db()
 	TimeManager.day_changed.connect(_on_day_changed)
 	TimeManager.season_changed.connect(_on_season_changed)
+	# 農地還原由 farm.gd._ready() 在 _generate_farm() 之後呼叫
 
 
 # ── 公開 API ─────────────────────────────────────────────────────────────
@@ -233,6 +234,60 @@ func is_mature(tile_pos: Vector2i) -> bool:
 		return false
 	var data : Dictionary = _crop_db[t["crop_id"]]
 	return t["growth_stage"] >= _total_stages(data)
+
+
+# ── S12 存檔介面 ──────────────────────────────────────────────────────────────
+
+## 回傳所有耕作中的 tile 座標（供 SaveManager 收集）
+func get_saved_tiles() -> Array[Vector2i]:
+	var result : Array[Vector2i] = []
+	for k in _tiles.keys():
+		result.append(k)
+	return result
+
+
+## 回傳某格的完整狀態資料（供 SaveManager 序列化）
+func get_tile_data(tile_pos: Vector2i) -> Dictionary:
+	if not _tiles.has(tile_pos):
+		return {}
+	return _tiles[tile_pos].duplicate()
+
+
+## 從存檔資料還原農地狀態（S12-T04）
+func restore_state(tiles_data: Array) -> void:
+	# 清除現有狀態
+	for pos : Vector2i in _crop_nodes.keys():
+		_crop_nodes[pos].queue_free()
+	_crop_nodes.clear()
+	for pos : Vector2i in _fertilized_nodes.keys():
+		_fertilized_nodes[pos].queue_free()
+	_fertilized_nodes.clear()
+	_tiles.clear()
+
+	for entry : Dictionary in tiles_data:
+		var pos := Vector2i(int(entry["x"]), int(entry["y"]))
+		# 重建 _tiles（去掉座標欄位）
+		var t : Dictionary = entry.duplicate()
+		t.erase("x")
+		t.erase("y")
+		_tiles[pos] = t
+
+		# 設定 TileMap 視覺
+		var watered_now : bool = t.get("watered_today", false)
+		if t["state"] == "planted" and watered_now:
+			_tile_map.set_cell(LAYER, pos, SOURCE_ID, T_WATERED)
+		elif t["state"] == "planted" or t["state"] == "tilled":
+			_tile_map.set_cell(LAYER, pos, SOURCE_ID, T_TILLED)
+		elif t["state"] == "watered":
+			_tile_map.set_cell(LAYER, pos, SOURCE_ID, T_WATERED)
+
+		# 作物視覺
+		if t["state"] == "planted" and t.has("crop_id"):
+			_spawn_crop_visual(pos, t["crop_id"], t.get("growth_stage", 0))
+
+		# 施肥視覺
+		if t.get("fertilized", false):
+			_spawn_fertilized_visual(pos)
 
 
 # ── 日期推進 ──────────────────────────────────────────────────────────────
@@ -726,7 +781,7 @@ func _quality_hint(tile_pos: Vector2i) -> String:
 
 func _is_farmable(tile_pos: Vector2i) -> bool:
 	return (tile_pos.x >= DIRT_X_MIN and tile_pos.x <= DIRT_X_MAX and
-	        tile_pos.y >= DIRT_Y_MIN  and tile_pos.y <= DIRT_Y_MAX)
+			tile_pos.y >= DIRT_Y_MIN  and tile_pos.y <= DIRT_Y_MAX)
 
 
 # ── 資料載入 ──────────────────────────────────────────────────────────────

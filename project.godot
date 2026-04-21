@@ -32,6 +32,7 @@ WeatherEffect="*res://scripts/managers/weather_effect.gd"
 LocaleManager="*res://scripts/managers/locale_manager.gd"
 DebugPanel="*res://scripts/debug/debug_panel.gd"
 InventoryManager="*res://scripts/managers/inventory_manager.gd"
+SaveManager="*res://scripts/managers/save_manager.gd"
 
 [display]
 

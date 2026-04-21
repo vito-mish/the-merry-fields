@@ -41,6 +41,7 @@ func _ready() -> void:
 	_add_shipping_box()
 	_add_house()
 	_add_season_overlay()
+	_restore_farm_save()   # S12: 必須在 _generate_farm() 之後
 
 
 func _setup_tileset() -> void:
@@ -136,6 +137,17 @@ func _generate_farm() -> void:
 	for y in range(-s + 3, -17):
 		_place(9, y, T_PATH)
 		_place(18, y, T_PATH)
+
+
+# ── S12 存檔還原 ──────────────────────────────────────────────────────────
+
+func _restore_farm_save() -> void:
+	var saved : Array = SaveManager.pop_pending_farm()
+	if saved.is_empty():
+		return
+	var farm_grid : Node = get_tree().get_first_node_in_group("farm_grid")
+	if farm_grid:
+		farm_grid.restore_state(saved)
 
 
 # ── 場景出口 ──────────────────────────────────────────────────────────────
