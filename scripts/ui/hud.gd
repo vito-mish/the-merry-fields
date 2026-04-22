@@ -17,6 +17,10 @@ var _crop_info_stat  : Label
 var _inventory_ui    : Control = null
 var inventory_open   : bool    = false
 
+# ── 對話框 UI ────────────────────────────────────────────────────────────
+var _dialog_box      : Control = null
+var dialog_open      : bool    = false
+
 # ── 工具列常數 ────────────────────────────────────────────────────────────
 const TOOL_ICONS : Dictionary = {
 	"hoe":          "鋤",
@@ -55,6 +59,7 @@ func _ready() -> void:
 	_build_overlay_labels()
 	_build_crop_info_panel()
 	_build_inventory_ui()
+	_build_dialog_box()
 	# 出貨箱結算報表（延遲一幀確保 shipping_box 已加入場景）
 	call_deferred("_connect_shipping_box")
 
@@ -252,6 +257,34 @@ func _close_inventory() -> void:
 
 func refresh_toolbar() -> void:
 	_toolbar.queue_redraw()
+
+
+# ── 對話框 ────────────────────────────────────────────────────────────────────
+
+func _build_dialog_box() -> void:
+	var script : GDScript = load("res://scripts/ui/dialog_box.gd")
+	_dialog_box = script.new()
+	_dialog_box.dialog_closed.connect(_on_dialog_closed)
+	add_child(_dialog_box)
+
+
+## 開啟對話框（供 NPC 等外部呼叫）
+## speaker: 說話者名稱；pages: 各頁文字陣列；portrait_col: 頭像顏色
+func show_dialog(speaker: String, pages: Array, portrait_col: Color = Color(0.55, 0.75, 0.45)) -> void:
+	if _dialog_box == null:
+		return
+	_dialog_box.show_dialog(speaker, pages, portrait_col)
+	dialog_open = true
+
+
+## 玩家按 action 鍵時呼叫翻頁（由 player.gd 觸發）
+func dialog_advance() -> void:
+	if _dialog_box and _dialog_box.is_open():
+		_dialog_box.advance()
+
+
+func _on_dialog_closed() -> void:
+	dialog_open = false
 
 
 func show_notification(text: String, color: Color = Color(1.0, 1.0, 0.5, 1.0)) -> void:

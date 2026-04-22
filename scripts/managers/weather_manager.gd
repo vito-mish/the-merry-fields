@@ -23,7 +23,7 @@ const WEATHER_WEIGHTS: Array[Array] = [
 ]
 
 # ── 狀態 ─────────────────────────────────────────────────────────────────
-var current_weather: int = Weather.SUNNY
+var current_weather : int = Weather.SUNNY
 
 # ── 訊號 ─────────────────────────────────────────────────────────────────
 signal weather_changed(weather: int)

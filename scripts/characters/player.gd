@@ -43,6 +43,15 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	var hud : Node = get_tree().get_first_node_in_group("hud")
 
+	# 對話框開啟時：鎖定移動，按 action 翻頁
+	if hud and hud.dialog_open:
+		velocity = Vector2.ZERO
+		move_and_slide()
+		_update_animation(Vector2.ZERO)
+		if Input.is_action_just_pressed("action"):
+			hud.dialog_advance()
+		return
+
 	# 背包 / 報表開啟時鎖定移動與動作
 	if hud and (hud.report_open or hud.inventory_open):
 		velocity = Vector2.ZERO
@@ -70,6 +79,17 @@ func _physics_process(delta: float) -> void:
 		if hud:
 			hud.toggle_inventory()
 		return
+
+	# 【測試用】按 T 開啟示範對話（之後接 NPC 系統時移除）
+	if Input.is_key_pressed(KEY_T) and not Input.is_key_pressed(KEY_CTRL):
+		if hud and not hud.dialog_open:
+			hud.show_dialog(
+				"老農夫",
+				["你好啊，年輕人！\n歡迎來到這片樂樂農場。",
+				 "春天種蕪菁和馬鈴薯，\n夏天適合番茄和玉米哦！",
+				 "每天記得澆水，\n別讓作物渴死了！"],
+				Color(0.60, 0.45, 0.25)
+			)
 
 	# 工具切換（Q / E 或 LB / RB）
 	if Input.is_action_just_pressed("tool_prev"):

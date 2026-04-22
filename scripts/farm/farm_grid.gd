@@ -289,6 +289,24 @@ func restore_state(tiles_data: Array) -> void:
 		if t.get("fertilized", false):
 			_spawn_fertilized_visual(pos)
 
+	# 讀檔當下若為雨/雪天，立刻對耕地自動澆水（S04-T10 fix）
+	if WeatherManager.is_raining() or WeatherManager.is_snowing():
+		_apply_rain_watering()
+
+
+## 雨/雪天自動澆水（供 restore_state 和 _on_day_changed 共用）
+func _apply_rain_watering() -> void:
+	for pos : Vector2i in _tiles.keys():
+		var t : Dictionary = _tiles[pos]
+		if t["state"] == "tilled":
+			t["state"]         = "watered"
+			t["watered_today"] = true
+			_tile_map.set_cell(LAYER, pos, SOURCE_ID, T_WATERED)
+		elif t["state"] == "planted":
+			# 成熟與未成熟作物皆澆水（視覺一致，成熟者不影響生長邏輯）
+			t["watered_today"] = true
+			_tile_map.set_cell(LAYER, pos, SOURCE_ID, T_WATERED)
+
 
 # ── 日期推進 ──────────────────────────────────────────────────────────────
 
@@ -337,19 +355,10 @@ func _on_day_changed(_day: int, _season: int, _year: int) -> void:
 	for pos in to_kill:
 		_kill_crop(pos)
 
-	# 雨天 / 雪天：新的一天開始自動澆水所有耕地（S04-T10）
+	# 新的一天若為雨/雪天，自動澆水（S04-T10）
+	# WeatherManager 在 day_changed 先執行已換成新天氣，is_raining() 取的正是今天
 	if WeatherManager.is_raining() or WeatherManager.is_snowing():
-		for pos : Vector2i in _tiles.keys():
-			var t : Dictionary = _tiles[pos]
-			if t["state"] == "tilled":
-				t["state"] = "watered"
-				t["watered_today"] = true
-				_tile_map.set_cell(LAYER, pos, SOURCE_ID, T_WATERED)
-			elif t["state"] == "planted":
-				var data : Dictionary = _crop_db[t["crop_id"]]
-				if t["growth_stage"] < _total_stages(data):
-					t["watered_today"] = true
-					_tile_map.set_cell(LAYER, pos, SOURCE_ID, T_WATERED)
+		_apply_rain_watering()
 
 
 # S04-T13: 季節切換時，清除所有不屬於新季節的作物（枯死）

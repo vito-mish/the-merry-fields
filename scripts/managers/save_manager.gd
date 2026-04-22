@@ -100,11 +100,12 @@ func pop_pending_player() -> Dictionary:
 
 func _collect_time() -> Dictionary:
 	return {
-		"day":    TimeManager.day,
-		"season": TimeManager.season,
-		"year":   TimeManager.year,
-		"hour":   TimeManager.hour,
-		"minute": TimeManager.minute,
+		"day":     TimeManager.day,
+		"season":  TimeManager.season,
+		"year":    TimeManager.year,
+		"hour":    TimeManager.hour,
+		"minute":  TimeManager.minute,
+		"weather": WeatherManager.current_weather,   # S04-T10 fix
 	}
 
 
@@ -152,6 +153,10 @@ func _apply_time(d: Dictionary) -> void:
 	TimeManager.year   = d.get("year",   1)
 	TimeManager.hour   = d.get("hour",   GameConfig.DAY_START_HOUR)
 	TimeManager.minute = d.get("minute", 0)
+	# 還原天氣，不重新隨機
+	if d.has("weather"):
+		WeatherManager.current_weather = int(d["weather"])
+		WeatherManager.weather_changed.emit(WeatherManager.current_weather)
 
 
 func _apply_economy(d: Dictionary) -> void:
